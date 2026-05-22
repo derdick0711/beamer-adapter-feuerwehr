@@ -1,0 +1,18 @@
+# PlatformIO build output
+.pio/
+
+# Secrets — NEVER commit
+secrets.h
+*.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# NVS dumps / flash backups
+*.nvs
+*.bin.bak

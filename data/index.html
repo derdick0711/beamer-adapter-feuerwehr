@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Beamer Adapter</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Beamer Adapter</h1>
+    <div id="status-bar">
+      <span id="status-power" class="badge">–</span>
+      <span id="status-input" class="badge">–</span>
+      <span id="status-blank" class="badge hidden">Schwarz</span>
+      <span id="status-reach" class="badge badge-warn hidden">Offline</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Strom</h2>
+      <div class="btn-row">
+        <button id="btn-on"  class="btn btn-primary" onclick="power('on')">Einschalten</button>
+        <button id="btn-off" class="btn btn-danger"  onclick="power('off')">Ausschalten</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Eingang</h2>
+      <div class="btn-row wrap">
+        <button class="btn" onclick="setInput('hdmi')">HDMI</button>
+        <button class="btn" onclick="setInput('vga')">VGA</button>
+        <button class="btn" onclick="setInput('component')">Component</button>
+        <button class="btn" onclick="setInput('svideo')">S-Video</button>
+        <button class="btn" onclick="setInput('composite')">Composite</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Bild</h2>
+      <div class="btn-row">
+        <button class="btn" onclick="blank(true)">Schwarz schalten</button>
+        <button class="btn btn-primary" onclick="blank(false)">Bild freigeben</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

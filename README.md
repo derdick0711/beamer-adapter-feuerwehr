@@ -105,7 +105,52 @@ pio device monitor
 
 Browser öffnen: `http://<adapter-ip>/`
 
-Alle Steuerfunktionen sind direkt verfügbar: Ein/Aus, Eingang, Schwarzbild, Status.
+Die Seite ist für Smartphone und Desktop optimiert und benötigt keine App-Installation.
+
+#### Aufbau der Seite
+
+```
+┌─────────────────────────────────────┐
+│  Beamer Adapter                     │  ← blauer Header
+│  [EIN] [HDMI] [Schwarz] [Offline?]  │  ← Status-Badges
+├─────────────────────────────────────┤
+│  Strom                              │
+│  ┌──────────────┐ ┌──────────────┐  │
+│  │  Einschalten │ │ Ausschalten  │  │  ← blau / rot
+│  └──────────────┘ └──────────────┘  │
+├─────────────────────────────────────┤
+│  Eingang                            │
+│  ┌──────┐ ┌─────┐ ┌───────────┐    │
+│  │ HDMI │ │ VGA │ │ Component │    │
+│  └──────┘ └─────┘ └───────────┘    │
+│  ┌─────────┐ ┌───────────┐         │
+│  │ S-Video │ │ Composite │         │  ← aktiver Eingang hervorgehoben
+│  └─────────┘ └───────────┘         │
+├─────────────────────────────────────┤
+│  Bild                               │
+│  ┌─────────────────┐ ┌───────────┐  │
+│  │ Schwarz schalten│ │Bild frei- │  │
+│  └─────────────────┘ │  geben   │  │
+│                      └───────────┘  │
+└─────────────────────────────────────┘
+```
+
+#### Status-Badges (oben im Header)
+
+| Badge | Bedeutung |
+|-------|-----------|
+| **EIN** / **AUS** (grün/grau) | Aktueller Betriebszustand des Beamers |
+| **HDMI** / **VGA** / … | Aktuell aktiver Eingang |
+| **Schwarz** (erscheint nur wenn aktiv) | Bild ist schwarz geschaltet |
+| **Offline** (gelb, erscheint nur bei Fehler) | Beamer antwortet nicht über RS232 |
+
+#### Verhalten
+
+- **Status-Aktualisierung**: Die Seite fragt den Adapter alle 5 Sekunden automatisch ab — kein manuelles Neuladen nötig.
+- **Aktiver Eingang**: Der zuletzt gewählte Eingangsbutton wird blau hervorgehoben.
+- **Fehlermeldungen**: Bei RS232-Timeout erscheint unten eine rote Toast-Meldung „Beamer antwortet nicht". Die Seite bleibt nutzbar und zeigt den zuletzt bekannten Status.
+- **Touch-optimiert**: Alle Buttons sind mindestens 48 px hoch — auf dem Smartphone per Daumen bedienbar.
+- **Kein Login erforderlich**: Die Seite ist ohne Passwort erreichbar (Absicherung über Netzwerksegmentierung).
 
 ### REST API
 

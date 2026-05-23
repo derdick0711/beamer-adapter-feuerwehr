@@ -74,11 +74,44 @@ void MqttManager::_reconnect() {
     }
 }
 
+void MqttManager::publishLightStatus() {
+    if (!_client.connected()) return;
+    JsonDocument doc;
+    doc["output"]    = gLight.output;
+    doc["reachable"] = gLight.reachable;
+    char buf[64];
+    size_t n = serializeJson(doc, buf, sizeof(buf));
+    String topic = _prefix + "/stat/light";
+    _client.publish(topic.c_str(), (uint8_t*)buf, n, true /*retain*/);
+}
+
+void MqttManager::publishScreenStatus() {
+    if (!_client.connected()) return;
+    JsonDocument doc;
+    doc["state"]       = gScreen.state;
+    doc["current_pos"] = gScreen.currentPos;
+    doc["reachable"]   = gScreen.reachable;
+    char buf[96];
+    size_t n = serializeJson(doc, buf, sizeof(buf));
+    String topic = _prefix + "/stat/screen";
+    _client.publish(topic.c_str(), (uint8_t*)buf, n, true /*retain*/);
+}
+
+void MqttManager::publishSceneResult(const SceneResult& r) {
+    if (!_client.connected()) return;
+    String body = r.toJson();
+    String topic = _prefix + "/stat/scene";
+    _client.publish(topic.c_str(), (uint8_t*)body.c_str(), body.length(), false);
+}
+
 void MqttManager::_subscribe() {
-    String base = _prefix + "/cmnd/";
     _client.subscribe((_prefix + "/cmnd/power").c_str());
     _client.subscribe((_prefix + "/cmnd/input").c_str());
     _client.subscribe((_prefix + "/cmnd/blank").c_str());
+    _client.subscribe((_prefix + "/cmnd/light").c_str());
+    _client.subscribe((_prefix + "/cmnd/screen").c_str());
+    _client.subscribe((_prefix + "/cmnd/scene/start").c_str());
+    _client.subscribe((_prefix + "/cmnd/scene/stop").c_str());
 }
 
 void MqttManager::_onMessage(char* topic, uint8_t* payload, unsigned int len) {
@@ -101,16 +134,8 @@ void MqttManager::_onMessage(char* topic, uint8_t* payload, unsigned int len) {
 
     } else if (topicStr == prefix + "/cmnd/input") {
         InputSource src = BeamerRS232::inputFromString(msg);
-        if (src == InputSource::UNKNOWN) return;
-        BeamerCmd cmd;
-        switch (src) {
-            case InputSource::HDMI:      cmd = BeamerCmd::INPUT_HDMI;      break;
-            case InputSource::VGA:       cmd = BeamerCmd::INPUT_VGA;       break;
-            case InputSource::COMPONENT: cmd = BeamerCmd::INPUT_COMPONENT; break;
-            case InputSource::SVIDEO:    cmd = BeamerCmd::INPUT_SVIDEO;    break;
-            case InputSource::COMPOSITE: cmd = BeamerCmd::INPUT_COMPOSITE; break;
-            default: return;
-        }
+        if (src != InputSource::HDMI && src != InputSource::VGA) return;
+        BeamerCmd cmd = (src == InputSource::HDMI) ? BeamerCmd::INPUT_HDMI : BeamerCmd::INPUT_VGA;
         gRS232.sendCommand(cmd);
         _instance->publishStatus();
 
@@ -121,5 +146,34 @@ void MqttManager::_onMessage(char* topic, uint8_t* payload, unsigned int len) {
         else return;
         gRS232.sendCommand(cmd);
         _instance->publishStatus();
+
+    } else if (topicStr == prefix + "/cmnd/light") {
+        if (msg != "on" && msg != "off") return;
+        ShellyClient::setSwitch(gLight, msg == "on");
+        _instance->publishLightStatus();
+
+    } else if (topicStr == prefix + "/cmnd/screen") {
+        if      (msg == "open")  ShellyClient::coverOpen(gScreen);
+        else if (msg == "close") ShellyClient::coverClose(gScreen);
+        else if (msg == "stop")  ShellyClient::coverStop(gScreen);
+        else if (msg.startsWith("pos:")) {
+            int pos = msg.substring(4).toInt();
+            if (pos >= 0 && pos <= 100)
+                ShellyClient::coverGoToPosition(gScreen, pos);
+            else return;
+        } else return;
+        _instance->publishScreenStatus();
+
+    } else if (topicStr == prefix + "/cmnd/scene/start") {
+        SceneResult r = SceneManager::runStart();
+        _instance->publishSceneResult(r);
+        _instance->publishLightStatus();
+        _instance->publishScreenStatus();
+
+    } else if (topicStr == prefix + "/cmnd/scene/stop") {
+        SceneResult r = SceneManager::runStop();
+        _instance->publishSceneResult(r);
+        _instance->publishLightStatus();
+        _instance->publishScreenStatus();
     }
 }

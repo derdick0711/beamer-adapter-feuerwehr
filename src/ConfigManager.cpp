@@ -55,6 +55,23 @@ void ConfigManager::saveRs232(const Rs232Config& cfg) {
     _prefs.end();
 }
 
+void ConfigManager::loadShelly() {
+    _prefs.begin("shellycfg", true);
+    shelly.lightIp      = _prefs.getString("light_ip",  "192.168.1.100");
+    shelly.screenIp     = _prefs.getString("screen_ip", "192.168.1.101");
+    shelly.adminPwHash  = _prefs.getString("admin_pw",  "");
+    _prefs.end();
+}
+
+void ConfigManager::saveShelly(const ShellyConfig& cfg) {
+    shelly = cfg;
+    _prefs.begin("shellycfg", false);
+    _prefs.putString("light_ip",  cfg.lightIp);
+    _prefs.putString("screen_ip", cfg.screenIp);
+    _prefs.putString("admin_pw",  cfg.adminPwHash);
+    _prefs.end();
+}
+
 void ConfigManager::resetWifi() {
     _prefs.begin("netcfg", false);
     _prefs.clear();

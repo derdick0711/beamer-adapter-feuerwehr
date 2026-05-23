@@ -9,6 +9,8 @@
 #include "RestHandler.h"
 #include "MqttManager.h"
 #include "WebUI.h"
+#include "ShellyClient.h"
+#include "AdminHandler.h"
 
 BeamerStatus gBeamerStatus;
 
@@ -26,6 +28,11 @@ void setup() {
 
     // 1. Load config from NVS
     gConfig.load();
+    gConfig.loadShelly();
+
+    // Init Shelly device IPs from config
+    gLight.ip  = gConfig.shelly.lightIp;
+    gScreen.ip = gConfig.shelly.screenIp;
 
     // 2. WiFi provisioning (blocks until connected or AP timeout → restart)
     gWifi.begin(gConfig);
@@ -36,9 +43,10 @@ void setup() {
     // 3. RS232 UART
     gRS232.begin(gConfig.rs232);
 
-    // 4. Web UI (LittleFS) + REST API
+    // 4. Web UI (LittleFS) + REST API + Admin UI
     gWebUI.begin(server);
     gRest.begin(server);
+    gAdmin.begin(server);
     server.begin();
     Serial.println("[boot] HTTP server started");
 

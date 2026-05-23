@@ -3,6 +3,8 @@
 #include "BeamerRS232.h"
 #include "BeamerStatus.h"
 #include "ConfigManager.h"
+#include "ShellyClient.h"
+#include "SceneManager.h"
 
 class RestHandler {
 public:

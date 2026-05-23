@@ -7,12 +7,17 @@ PlatformIO/Arduino-ESP32.
 ## Funktionen
 
 - **Beamer ein-/ausschalten** via RS232
-- **Eingang auswählen** (HDMI, VGA, Component, S-Video, Composite)
+- **Eingang auswählen** (HDMI, VGA)
 - **Bild schwarz schalten** (Blank/Mute)
 - **Status abfragen** (Betriebszustand, aktiver Eingang)
-- **REST API** für direkte HTTP-Steuerung
+- **Präsentation starten** (Ein-Knopf: Leinwand runter → Licht aus → Beamer ein → HDMI)
+- **Präsentation beenden** (Ein-Knopf: Leinwand hoch → Licht an → Beamer aus)
+- **Deckenlicht steuern** (Shelly 1 Mini Gen3 — ein/aus)
+- **Leinwand steuern** (Shelly 2PM Gen3 — auf/ab/stop/Position 0–100 %)
+- **REST API** für direkte HTTP-Steuerung aller Funktionen
 - **MQTT** für Integration in Automationssysteme (Home Assistant, Node-RED)
 - **Web-Oberfläche** unter der IP-Adresse des Adapters
+- **Admin-Oberfläche** zur Konfiguration der Shelly-IPs (passwortgeschützt)
 - **Captive-Portal-Konfiguration** beim ersten Start (oder nach Reset)
 - **Statische IP** konfigurierbar
 
@@ -59,12 +64,42 @@ Der **BOOT-Button** (GPIO0) auf dem ESP32-S3 DevKit dient als WLAN-Reset:
 
 ---
 
+## Hardware: Shelly-Geräte
+
+| Gerät | Modell | Funktion |
+|-------|--------|----------|
+| Deckenlicht | Shelly 1 Mini Gen3 | Ein/Aus per HTTP RPC (`Switch.Set`) |
+| Leinwand | Shelly 2PM Gen3 | Auf/Ab/Stop/Position per HTTP RPC (`Cover.*`) — muss im Roller-Modus konfiguriert sein |
+
+> **Hinweis**: Der Shelly 2PM Gen3 muss vor der ersten Nutzung in der Shelly-App
+> unter Einstellungen → Betriebsmodus auf **Jalousiesteuerung / Roller** umgestellt
+> und kalibriert werden. Anschließend IPs über `/admin` im Browser konfigurieren.
+
+---
+
 ## Software
 
 ### Voraussetzungen
 
 - [VS Code](https://code.visualstudio.com/) mit [PlatformIO-Extension](https://platformio.org/install/ide?install=vscode)
 - Git
+
+### Abhängigkeiten
+
+Alle Bibliotheken werden von PlatformIO automatisch installiert (`platformio.ini`):
+
+| Bibliothek | Version | Verwendung |
+|-----------|---------|-----------|
+| tzapu/WiFiManager | ^2.0.17 | Captive-Portal-Konfiguration |
+| me-no-dev/ESPAsyncWebServer | ^1.2.3 | Asynchroner Web- und REST-Server |
+| me-no-dev/AsyncTCP | ^1.1.1 | TCP-Basis für ESPAsyncWebServer |
+| knolleary/PubSubClient | ^2.8 | MQTT-Client |
+| bblanchon/ArduinoJson | ^7.0.0 | JSON-Serialisierung/-Deserialisierung |
+
+Eingebaut (keine `lib_deps` nötig):
+- **HTTPClient** (Arduino-ESP32) — HTTP-Aufrufe an Shelly-Geräte
+- **mbedTLS** (ESP-IDF) — SHA-256-Hashing für Admin-Passwort
+- **Preferences / NVS** — persistente Konfigurationsspeicherung
 
 ### Build & Flash
 
@@ -85,6 +120,9 @@ pio run -t uploadfs
 # Seriellen Monitor öffnen (für Debug-Ausgaben)
 pio device monitor
 ```
+
+> **Debug-Build**: `pio run -e esp32-s3-devkitc-1-debug -t upload` aktiviert
+> ausführliche Logging-Ausgaben über den seriellen Monitor.
 
 ### Initiale WLAN-Konfiguration
 
@@ -114,18 +152,32 @@ Die Seite ist für Smartphone und Desktop optimiert und benötigt keine App-Inst
 │  Beamer Adapter                     │  ← blauer Header
 │  [EIN] [HDMI] [Schwarz] [Offline?]  │  ← Status-Badges
 ├─────────────────────────────────────┤
+│  Szenen                             │
+│  ┌────────────────┐ ┌─────────────┐ │
+│  │ Präsentation   │ │Präsentation │ │  ← blau / rot
+│  │    starten     │ │  beenden    │ │
+│  └────────────────┘ └─────────────┘ │
+├─────────────────────────────────────┤
+│  Licht ●                            │  ← grüner Punkt = an
+│  ┌──────────┐ ┌──────────┐         │
+│  │  Licht   │ │  Licht   │         │
+│  │   ein    │ │   aus    │         │
+│  └──────────┘ └──────────┘         │
+├─────────────────────────────────────┤
+│  Leinwand  75% – closing            │  ← Position + Fahrzustand
+│  ┌────────┐ ┌────────┐ ┌────────┐  │
+│  │ Runter │ │  Stop  │ │  Hoch  │  │
+│  └────────┘ └────────┘ └────────┘  │
+├─────────────────────────────────────┤
 │  Strom                              │
 │  ┌──────────────┐ ┌──────────────┐  │
 │  │  Einschalten │ │ Ausschalten  │  │  ← blau / rot
 │  └──────────────┘ └──────────────┘  │
 ├─────────────────────────────────────┤
 │  Eingang                            │
-│  ┌──────┐ ┌─────┐ ┌───────────┐    │
-│  │ HDMI │ │ VGA │ │ Component │    │
-│  └──────┘ └─────┘ └───────────┘    │
-│  ┌─────────┐ ┌───────────┐         │
-│  │ S-Video │ │ Composite │         │  ← aktiver Eingang hervorgehoben
-│  └─────────┘ └───────────┘         │
+│  ┌──────────┐ ┌──────────┐         │
+│  │   HDMI   │ │   VGA    │         │  ← aktiver Eingang hervorgehoben
+│  └──────────┘ └──────────┘         │
 ├─────────────────────────────────────┤
 │  Bild                               │
 │  ┌─────────────────┐ ┌───────────┐  │
@@ -152,31 +204,153 @@ Die Seite ist für Smartphone und Desktop optimiert und benötigt keine App-Inst
 - **Touch-optimiert**: Alle Buttons sind mindestens 48 px hoch — auf dem Smartphone per Daumen bedienbar.
 - **Kein Login erforderlich**: Die Seite ist ohne Passwort erreichbar (Absicherung über Netzwerksegmentierung).
 
+### Admin-Oberfläche
+
+Browser öffnen: `http://<adapter-ip>/admin`
+
+Passwortgeschützt (Standard: **`feuerwehr`**). Hier können konfiguriert werden:
+
+- IP-Adresse des Shelly 1 Mini Gen3 (Deckenlicht)
+- IP-Adresse des Shelly 2PM Gen3 (Leinwand)
+- Admin-Passwort ändern
+
+Das Passwort wird als SHA-256-Hash im NVS-Flash gespeichert (nicht im Klartext).
+
+---
+
 ### REST API
+
+Basis-URL: `http://<adapter-ip>`
+
+#### Beamer
+
+| Methode | Endpoint | Body / Parameter | Beschreibung |
+|---------|----------|-----------------|--------------|
+| GET | `/api/status` | — | Aktueller Beamer-Status |
+| POST | `/api/power` | `{"state":"on"\|"off"}` | Ein-/Ausschalten |
+| POST | `/api/input` | `{"input":"hdmi"\|"vga"}` | Eingang wählen |
+| POST | `/api/blank` | `{"enabled":true\|false}` | Schwarzbild ein/aus |
+
+**Gültige Eingangswerte**: `hdmi`, `vga`
+(Andere Werte werden mit HTTP 400 abgelehnt.)
+
+**Beispiel-Antwort** `GET /api/status`:
+```json
+{
+  "power": "on",
+  "input": "hdmi",
+  "blank": false,
+  "reachable": true,
+  "lastUpdated": 12345678
+}
+```
+
+#### Szenen-Automatisierung
 
 | Methode | Endpoint | Beschreibung |
 |---------|----------|--------------|
-| GET | `/api/status` | Aktueller Beamer-Status |
-| POST | `/api/power` | Ein/Aus: `{"state":"on"}` |
-| POST | `/api/input` | Eingang: `{"input":"hdmi"}` |
-| POST | `/api/blank` | Schwarzbild: `{"enabled":true}` |
+| POST | `/api/scene/start` | Präsentation starten (Leinwand↓ → Licht aus → Beamer ein → HDMI) |
+| POST | `/api/scene/stop` | Präsentation beenden (Leinwand↑ → Licht an → Beamer aus) |
 
-Eingänge: `hdmi`, `vga`, `component`, `svideo`, `composite`
+**Beispiel-Antwort** `POST /api/scene/start`:
+```json
+{
+  "scene": "start",
+  "success": true,
+  "duration_ms": 2340,
+  "steps": [
+    {"device": "screen", "action": "close",      "success": true,  "error": ""},
+    {"device": "light",  "action": "off",         "success": true,  "error": ""},
+    {"device": "beamer", "action": "power_on",    "success": true,  "error": ""},
+    {"device": "beamer", "action": "input_hdmi",  "success": true,  "error": ""}
+  ]
+}
+```
 
-Vollständige API-Dokumentation: [specs/001-rs232-wifi-adapter/contracts/rest-api.md](specs/001-rs232-wifi-adapter/contracts/rest-api.md)
+`success: false` bedeutet Teilfehler — einzelne Schritte können fehlschlagen, die Szene läuft trotzdem durch. Details stehen in `steps[].error`.
+
+#### Deckenlicht (Shelly 1 Mini Gen3)
+
+| Methode | Endpoint | Body | Beschreibung |
+|---------|----------|------|--------------|
+| GET | `/api/light/status` | — | Schaltzustand + Erreichbarkeit |
+| POST | `/api/light` | `{"state":"on"\|"off"}` | Licht ein-/ausschalten |
+
+**Beispiel-Antwort** `GET /api/light/status`:
+```json
+{"output": true, "reachable": true}
+```
+
+#### Leinwand (Shelly 2PM Gen3)
+
+| Methode | Endpoint | Body | Beschreibung |
+|---------|----------|------|--------------|
+| GET | `/api/screen/status` | — | Fahrzustand + Position (0–100 %) |
+| POST | `/api/screen` | `{"action":"open"}` | Leinwand hochfahren |
+| POST | `/api/screen` | `{"action":"close"}` | Leinwand herunterfahren |
+| POST | `/api/screen` | `{"action":"stop"}` | Leinwand anhalten |
+| POST | `/api/screen` | `{"action":"position","pos":75}` | Zielposition 0–100 % |
+
+**Beispiel-Antwort** `GET /api/screen/status`:
+```json
+{"state": "open", "current_pos": 100, "reachable": true}
+```
+
+Mögliche `state`-Werte: `open`, `closed`, `opening`, `closing`, `stopped`, `unknown`.
+
+#### Konfiguration
+
+| Methode | Endpoint | Beschreibung |
+|---------|----------|--------------|
+| GET | `/api/config` | Aktuelle Netzwerk- und Shelly-Konfiguration (keine Passwörter) |
+
+#### Admin-Oberfläche
+
+| Methode | Endpoint | Beschreibung |
+|---------|----------|--------------|
+| GET | `/admin` | Konfigurationsseite (Passwortgeschützt — Standard: `feuerwehr`) |
+| POST | `/admin/save` | Shelly-IPs und Passwort speichern |
+
+---
 
 ### MQTT
+
+Topic-Präfix `beamer` ist in der Konfiguration änderbar (Standard: `beamer`).
+
+#### Beamer-Befehle
 
 | Topic | Richtung | Beispiel-Payload |
 |-------|----------|-----------------|
 | `beamer/cmnd/power` | → Adapter | `on` / `off` |
-| `beamer/cmnd/input` | → Adapter | `hdmi` |
+| `beamer/cmnd/input` | → Adapter | `hdmi` / `vga` |
 | `beamer/cmnd/blank` | → Adapter | `true` / `false` |
-| `beamer/stat` | ← Adapter | JSON-Statusobjekt |
+| `beamer/stat` | ← Adapter | JSON-Statusobjekt (retained) |
 
-Topic-Präfix `beamer` ist in der Konfiguration änderbar.
+Gültige Payload-Werte für `cmnd/input`: `hdmi`, `vga`
+(Alle anderen Werte werden stillschweigend ignoriert.)
 
-Vollständige MQTT-Dokumentation: [specs/001-rs232-wifi-adapter/contracts/mqtt-contract.md](specs/001-rs232-wifi-adapter/contracts/mqtt-contract.md)
+**Beispiel** `beamer/stat`:
+```json
+{
+  "power": "on",
+  "input": "hdmi",
+  "blank": false,
+  "reachable": true,
+  "uptime": 3600
+}
+```
+
+#### Szenen & Shelly
+
+| Topic | Richtung | Payload |
+|-------|----------|---------|
+| `beamer/cmnd/scene/start` | → Adapter | beliebig (z. B. `1`) |
+| `beamer/cmnd/scene/stop` | → Adapter | beliebig (z. B. `1`) |
+| `beamer/cmnd/light` | → Adapter | `on` / `off` |
+| `beamer/cmnd/screen` | → Adapter | `open` / `close` / `stop` / `pos:75` |
+| `beamer/stat/scene` | ← Adapter | SceneResult JSON (nicht retained) |
+| `beamer/stat/light` | ← Adapter | `{"output":true,"reachable":true}` (retained) |
+| `beamer/stat/screen` | ← Adapter | `{"state":"open","current_pos":100,"reachable":true}` (retained) |
 
 ---
 
@@ -188,20 +362,53 @@ Vollständige MQTT-Dokumentation: [specs/001-rs232-wifi-adapter/contracts/mqtt-c
 | Power OFF | `*0 IR 002\r` |
 | Eingang HDMI | `C36\r` |
 | Eingang VGA | `C05\r` |
-| Eingang Component | `C33\r` |
-| Eingang S-Video | `C34\r` |
-| Eingang Composite | `C35\r` |
 | Schwarzbild | `*0 IR 055\r` |
 
 Serielle Parameter: 9600 Baud, 8N1, kein Handshake.
+ACK = `0x06`, NAK = `0x15`, Timeout = 500 ms.
+
+---
+
+## Quellcode-Übersicht
+
+```
+src/
+├── main.cpp              Initialisierung, Setup, Loop
+├── ConfigManager.h/.cpp  NVS-Konfiguration (WLAN, MQTT, Shelly-IPs, Admin-PW)
+├── BeamerRS232.h/.cpp    RS232-Kommunikation mit Acer H6512BD
+├── BeamerStatus.h        Globaler Beamer-Zustand (power, input, blank, reachable)
+├── RestHandler.h/.cpp    ESPAsyncWebServer — REST-Routen
+├── MqttManager.h/.cpp    PubSubClient — MQTT pub/sub
+├── ShellyClient.h/.cpp   HTTP-RPC-Client für Shelly Gen3 (Switch & Cover)
+├── SceneManager.h/.cpp   Szenen-Automatisierung (start/stop)
+└── AdminHandler.h/.cpp   Admin-Webseite mit HTTP Basic Auth + SHA-256
+
+data/
+├── index.html            Web-Oberfläche (Hauptseite)
+├── admin.html            Admin-Konfigurationsseite
+├── app.js                Frontend-JavaScript (Polling, API-Aufrufe)
+└── style.css             CSS (Mobile-first, Google Material Design)
+```
 
 ---
 
 ## Projektdokumentation
 
+### Feature 001 — RS232-WiFi Beamer Adapter
 - [Spezifikation](specs/001-rs232-wifi-adapter/spec.md)
 - [Implementierungsplan](specs/001-rs232-wifi-adapter/plan.md)
 - [Datenmodell](specs/001-rs232-wifi-adapter/data-model.md)
 - [REST-API-Vertrag](specs/001-rs232-wifi-adapter/contracts/rest-api.md)
 - [MQTT-Vertrag](specs/001-rs232-wifi-adapter/contracts/mqtt-contract.md)
 - [Quickstart](specs/001-rs232-wifi-adapter/quickstart.md)
+
+### Feature 002 — Shelly-Integration & Präsentationsautomatisierung
+- [Spezifikation](specs/002-shelly-automation/spec.md)
+- [Implementierungsplan](specs/002-shelly-automation/plan.md)
+- [Datenmodell](specs/002-shelly-automation/data-model.md)
+- [REST-API-Erweiterungen](specs/002-shelly-automation/contracts/rest-api-additions.md)
+- [MQTT-Erweiterungen](specs/002-shelly-automation/contracts/mqtt-additions.md)
+- [Quickstart](specs/002-shelly-automation/quickstart.md)
+
+### Feature 003 — Eingangswahl auf HDMI und VGA reduzieren
+- [Spezifikation](specs/003-reduce-inputs/spec.md)

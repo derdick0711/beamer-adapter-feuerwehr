@@ -5,12 +5,17 @@
 #include "ConfigManager.h"
 #include "BeamerRS232.h"
 #include "BeamerStatus.h"
+#include "ShellyClient.h"
+#include "SceneManager.h"
 
 class MqttManager {
 public:
     void begin(ConfigManager& cfg);
     void loop();
-    void publishStatus();   // Call after every command execution
+    void publishStatus();           // beamer status after RS232 command
+    void publishLightStatus();      // beamer/stat/light
+    void publishScreenStatus();     // beamer/stat/screen
+    void publishSceneResult(const SceneResult& r);  // beamer/stat/scene
 
 private:
     WiFiClient    _wifiClient;

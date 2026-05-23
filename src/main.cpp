@@ -12,6 +12,7 @@
 #include "WebUI.h"
 #include "ShellyClient.h"
 #include "AdminHandler.h"
+#include "OtaUpdater.h"
 
 BeamerStatus gBeamerStatus;
 
@@ -56,12 +57,18 @@ void setup() {
     // 6. MQTT (non-blocking; skipped if no broker configured)
     gMqtt.begin(gConfig);
 
+    // 7. OTA updater — checks GitHub Releases once per hour
+    gOta.begin("derdick0711", "beamer-adapter-feuerwehr");
+
     Serial.println("[boot] Ready");
 }
 
 void loop() {
     // MQTT keepalive + auto-reconnect
     gMqtt.loop();
+
+    // OTA update check (once per hour)
+    gOta.loop();
 
     // Reset-button 5 s hold detection
     gWifi.checkResetButton(gConfig);

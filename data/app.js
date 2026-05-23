@@ -35,27 +35,21 @@ async function apiFetch(path, method = 'GET', body = null) {
   }
 }
 
+// ── Beamer status ─────────────────────────────────────────────────────────────
+
 function updateUI(status) {
   if (!status) return;
 
-  // Power badge
   const pw = document.getElementById('status-power');
   pw.textContent = status.power === 'on' ? 'EIN' : status.power === 'off' ? 'AUS' : '–';
   pw.style.background = status.power === 'on' ? '#1e8e3e' : 'rgba(255,255,255,0.2)';
 
-  // Input badge
   const inp = document.getElementById('status-input');
   inp.textContent = status.input !== 'unknown' ? status.input.toUpperCase() : '–';
 
-  // Blank badge
-  const bl = document.getElementById('status-blank');
-  bl.classList.toggle('hidden', !status.blank);
+  document.getElementById('status-blank').classList.toggle('hidden', !status.blank);
+  document.getElementById('status-reach').classList.toggle('hidden', status.reachable !== false);
 
-  // Offline badge
-  const rc = document.getElementById('status-reach');
-  rc.classList.toggle('hidden', status.reachable !== false);
-
-  // Highlight active input button
   document.querySelectorAll('[data-input]').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.input === status.input);
   });
@@ -65,6 +59,8 @@ async function fetchStatus() {
   const data = await apiFetch('/api/status');
   updateUI(data);
 }
+
+// ── Beamer commands ───────────────────────────────────────────────────────────
 
 async function power(state) {
   const data = await apiFetch('/api/power', 'POST', { state });
@@ -84,13 +80,96 @@ async function blank(enabled) {
   if (data) showToast(enabled ? 'Bild schwarz geschaltet' : 'Bild freigegeben');
 }
 
-// Add data-input attributes to input buttons for active-state highlighting
+// ── Szenen ────────────────────────────────────────────────────────────────────
+
+async function startScene() {
+  showToast('Szene wird gestartet…');
+  const data = await apiFetch('/api/scene/start', 'POST');
+  if (!data) return;
+  const ok = data.success;
+  showToast(ok ? `Präsentation gestartet (${data.duration_ms} ms)`
+               : 'Präsentation gestartet (Teilfehler)', !ok);
+  fetchLightStatus();
+  fetchScreenStatus();
+  fetchStatus();
+}
+
+async function stopScene() {
+  showToast('Szene wird beendet…');
+  const data = await apiFetch('/api/scene/stop', 'POST');
+  if (!data) return;
+  const ok = data.success;
+  showToast(ok ? `Präsentation beendet (${data.duration_ms} ms)`
+               : 'Präsentation beendet (Teilfehler)', !ok);
+  fetchLightStatus();
+  fetchScreenStatus();
+  fetchStatus();
+}
+
+// ── Deckenlicht ───────────────────────────────────────────────────────────────
+
+function updateLightUI(status) {
+  if (!status) return;
+  const dot = document.getElementById('light-badge');
+  if (dot) {
+    dot.className = 'status-dot ' + (status.output ? 'on' : 'off');
+    dot.title = status.reachable ? (status.output ? 'an' : 'aus') : 'nicht erreichbar';
+  }
+}
+
+async function fetchLightStatus() {
+  const data = await apiFetch('/api/light/status');
+  updateLightUI(data);
+}
+
+async function setLight(state) {
+  const data = await apiFetch('/api/light', 'POST', { state });
+  if (data) {
+    showToast(state === 'on' ? 'Licht eingeschaltet' : 'Licht ausgeschaltet');
+    fetchLightStatus();
+  }
+}
+
+// ── Leinwand ──────────────────────────────────────────────────────────────────
+
+function updateScreenUI(status) {
+  if (!status) return;
+  const lbl = document.getElementById('screen-pos');
+  if (lbl) {
+    if (!status.reachable) {
+      lbl.textContent = '(nicht erreichbar)';
+    } else {
+      lbl.textContent = `${status.current_pos}% – ${status.state}`;
+    }
+  }
+}
+
+async function fetchScreenStatus() {
+  const data = await apiFetch('/api/screen/status');
+  updateScreenUI(data);
+}
+
+async function setScreen(action, pos) {
+  const body = pos !== undefined ? { action, pos } : { action };
+  const data = await apiFetch('/api/screen', 'POST', body);
+  if (data) {
+    const labels = { open: 'Leinwand hoch', close: 'Leinwand runter', stop: 'Leinwand gestoppt' };
+    showToast(labels[action] || `Leinwand: ${action}`);
+    setTimeout(fetchScreenStatus, 500);
+  }
+}
+
+// ── Init: data-input attributes + polling ────────────────────────────────────
+
 document.querySelectorAll('.btn').forEach(btn => {
   const onclick = btn.getAttribute('onclick') || '';
   const m = onclick.match(/setInput\('(\w+)'\)/);
   if (m) btn.dataset.input = m[1];
 });
 
-// Initial fetch + polling
 fetchStatus();
+fetchLightStatus();
+fetchScreenStatus();
 setInterval(fetchStatus, POLL_MS);
+setInterval(fetchLightStatus, POLL_MS);
+setInterval(fetchScreenStatus, POLL_MS);

@@ -64,6 +64,8 @@ void RestHandler::begin(AsyncWebServer& server) {
         doc["mqttHost"]   = gConfig.mqtt.host;
         doc["mqttPort"]   = gConfig.mqtt.port;
         doc["mqttPrefix"] = gConfig.mqtt.prefix;
+        doc["lightIp"]    = gConfig.shelly.lightIp;
+        doc["screenIp"]   = gConfig.shelly.screenIp;
         String body;
         serializeJson(doc, body);
         req->send(200, "application/json", body);
@@ -111,22 +113,106 @@ void RestHandler::begin(AsyncWebServer& server) {
             }
             String inputStr = doc["input"].as<String>();
             InputSource src = BeamerRS232::inputFromString(inputStr);
-            if (src == InputSource::UNKNOWN) {
+            if (src != InputSource::HDMI && src != InputSource::VGA) {
                 _sendError(req, 400, "invalid_value", "input");
                 return;
             }
             BeamerCmd cmd;
             switch (src) {
-                case InputSource::HDMI:      cmd = BeamerCmd::INPUT_HDMI;      break;
-                case InputSource::VGA:       cmd = BeamerCmd::INPUT_VGA;       break;
-                case InputSource::COMPONENT: cmd = BeamerCmd::INPUT_COMPONENT; break;
-                case InputSource::SVIDEO:    cmd = BeamerCmd::INPUT_SVIDEO;    break;
-                case InputSource::COMPOSITE: cmd = BeamerCmd::INPUT_COMPOSITE; break;
+                case InputSource::HDMI: cmd = BeamerCmd::INPUT_HDMI; break;
+                case InputSource::VGA:  cmd = BeamerCmd::INPUT_VGA;  break;
                 default: _sendError(req, 400, "invalid_value", "input"); return;
             }
             if (!gRS232.sendCommand(cmd)) { _sendRS232Timeout(req); return; }
             _sendStatus(req);
         });
+
+    // ── Shelly: Deckenlicht ──────────────────────────────────────────────────
+
+    // GET /api/light/status
+    server.on("/api/light/status", HTTP_GET, [](AsyncWebServerRequest* req) {
+        ShellyClient::getSwitchStatus(gLight);
+        JsonDocument doc;
+        doc["output"]    = gLight.output;
+        doc["reachable"] = gLight.reachable;
+        String body; serializeJson(doc, body);
+        req->send(200, "application/json", body);
+    });
+
+    // POST /api/light  {"state":"on"|"off"}
+    server.on("/api/light", HTTP_POST,
+        [](AsyncWebServerRequest* req) {},
+        nullptr,
+        [](AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
+            JsonDocument doc;
+            if (deserializeJson(doc, data, len)) {
+                _sendError(req, 400, "invalid_json"); return;
+            }
+            String state = doc["state"] | "";
+            if (state != "on" && state != "off") {
+                _sendError(req, 400, "invalid_state"); return;
+            }
+            ShellyResult r = ShellyClient::setSwitch(gLight, state == "on");
+            if (!r.success) { _sendError(req, 503, "shelly_light_unreachable"); return; }
+            JsonDocument out; out["ok"] = true;
+            String body; serializeJson(out, body);
+            req->send(200, "application/json", body);
+        });
+
+    // ── Shelly: Leinwand ────────────────────────────────────────────────────
+
+    // GET /api/screen/status
+    server.on("/api/screen/status", HTTP_GET, [](AsyncWebServerRequest* req) {
+        ShellyClient::getCoverStatus(gScreen);
+        JsonDocument doc;
+        doc["state"]       = gScreen.state;
+        doc["current_pos"] = gScreen.currentPos;
+        doc["reachable"]   = gScreen.reachable;
+        String body; serializeJson(doc, body);
+        req->send(200, "application/json", body);
+    });
+
+    // POST /api/screen  {"action":"open"|"close"|"stop"|"position", "pos":0-100}
+    server.on("/api/screen", HTTP_POST,
+        [](AsyncWebServerRequest* req) {},
+        nullptr,
+        [](AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
+            JsonDocument doc;
+            if (deserializeJson(doc, data, len)) {
+                _sendError(req, 400, "invalid_json"); return;
+            }
+            String action = doc["action"] | "";
+            ShellyResult r;
+            if      (action == "open")     r = ShellyClient::coverOpen(gScreen);
+            else if (action == "close")    r = ShellyClient::coverClose(gScreen);
+            else if (action == "stop")     r = ShellyClient::coverStop(gScreen);
+            else if (action == "position") {
+                if (!doc["pos"].is<int>()) {
+                    _sendError(req, 400, "pos required for action position"); return;
+                }
+                r = ShellyClient::coverGoToPosition(gScreen, doc["pos"].as<int>());
+            } else {
+                _sendError(req, 400, "invalid action"); return;
+            }
+            if (!r.success) { _sendError(req, 503, "shelly_screen_unreachable"); return; }
+            JsonDocument out; out["ok"] = true;
+            String body; serializeJson(out, body);
+            req->send(200, "application/json", body);
+        });
+
+    // ── Szenen-Automatisierung ───────────────────────────────────────────────
+
+    // POST /api/scene/start
+    server.on("/api/scene/start", HTTP_POST, [](AsyncWebServerRequest* req) {
+        SceneResult r = SceneManager::runStart();
+        req->send(200, "application/json", r.toJson());
+    });
+
+    // POST /api/scene/stop
+    server.on("/api/scene/stop", HTTP_POST, [](AsyncWebServerRequest* req) {
+        SceneResult r = SceneManager::runStop();
+        req->send(200, "application/json", r.toJson());
+    });
 
     // POST /api/blank  {"enabled":true|false}
     server.on("/api/blank", HTTP_POST,

@@ -18,6 +18,35 @@
   </header>
 
   <main>
+    <!-- Szenen-Automatisierung -->
+    <section class="card">
+      <h2>Szenen</h2>
+      <div class="btn-row">
+        <button class="btn btn-primary"  onclick="startScene()">Präsentation starten</button>
+        <button class="btn btn-danger"   onclick="stopScene()">Präsentation beenden</button>
+      </div>
+    </section>
+
+    <!-- Deckenlicht -->
+    <section class="card">
+      <h2>Licht <span id="light-badge" class="status-dot"></span></h2>
+      <div class="btn-row">
+        <button class="btn" id="btn-light-on"  onclick="setLight('on')">Licht ein</button>
+        <button class="btn" id="btn-light-off" onclick="setLight('off')">Licht aus</button>
+      </div>
+    </section>
+
+    <!-- Leinwand -->
+    <section class="card">
+      <h2>Leinwand <span id="screen-pos" class="muted-label"></span></h2>
+      <div class="btn-row">
+        <button class="btn" onclick="setScreen('close')">Runter</button>
+        <button class="btn" onclick="setScreen('stop')">Stop</button>
+        <button class="btn" onclick="setScreen('open')">Hoch</button>
+      </div>
+    </section>
+
+    <!-- Beamer-Steuerung -->
     <section class="card">
       <h2>Strom</h2>
       <div class="btn-row">
@@ -28,12 +57,9 @@
 
     <section class="card">
       <h2>Eingang</h2>
-      <div class="btn-row wrap">
+      <div class="btn-row">
         <button class="btn" onclick="setInput('hdmi')">HDMI</button>
         <button class="btn" onclick="setInput('vga')">VGA</button>
-        <button class="btn" onclick="setInput('component')">Component</button>
-        <button class="btn" onclick="setInput('svideo')">S-Video</button>
-        <button class="btn" onclick="setInput('composite')">Composite</button>
       </div>
     </section>
 

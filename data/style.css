@@ -125,3 +125,51 @@ main {
   transition: opacity .3s;
 }
 .toast.hidden { opacity: 0; pointer-events: none; }
+
+/* Shelly status indicators */
+.status-dot {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #ccc;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.status-dot.on  { background: #1e8e3e; }
+.status-dot.off { background: #ccc; }
+
+.muted-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Admin form */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.form-group label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+.form-group label small { font-weight: 400; }
+.form-group input[type="text"],
+.form-group input[type="password"] {
+  padding: 10px 12px;
+  border: 2px solid #dadce0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: var(--text);
+  background: #fff;
+  width: 100%;
+}
+.form-group input:focus {
+  outline: none;
+  border-color: var(--primary);
+}

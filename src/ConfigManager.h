@@ -2,6 +2,12 @@
 #include <Arduino.h>
 #include <Preferences.h>
 
+struct ShellyConfig {
+    String lightIp      = "192.168.1.100";
+    String screenIp     = "192.168.1.101";
+    String adminPwHash;  // SHA-256 hex; empty = use default "feuerwehr"
+};
+
 struct NetworkConfig {
     String ssid;
     String password;
@@ -28,11 +34,14 @@ public:
     NetworkConfig network;
     MqttConfig    mqtt;
     Rs232Config   rs232;
+    ShellyConfig  shelly;
 
     void load();
+    void loadShelly();
     void saveNetwork(const NetworkConfig& cfg);
     void saveMqtt(const MqttConfig& cfg);
     void saveRs232(const Rs232Config& cfg);
+    void saveShelly(const ShellyConfig& cfg);
     void resetWifi();
     bool hasWifiCredentials() const { return network.ssid.length() > 0; }
 

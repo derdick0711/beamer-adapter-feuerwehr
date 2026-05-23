@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Beamer Adapter – Admin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Beamer Adapter – Admin</h1>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Shelly Konfiguration</h2>
+      <form method="post" action="/admin/save">
+        <div class="form-group">
+          <label for="light_ip">Shelly 1 Mini Gen3 (Deckenlicht)</label>
+          <input type="text" id="light_ip" name="light_ip"
+                 placeholder="192.168.1.100" pattern="\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}" required>
+        </div>
+        <div class="form-group">
+          <label for="screen_ip">Shelly 2PM Gen3 (Leinwand)</label>
+          <input type="text" id="screen_ip" name="screen_ip"
+                 placeholder="192.168.1.101" pattern="\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}" required>
+        </div>
+        <div class="form-group">
+          <label for="new_password">Neues Admin-Passwort <small>(leer = unverändert)</small></label>
+          <input type="password" id="new_password" name="new_password"
+                 placeholder="Leer lassen wenn unverändert">
+        </div>
+        <div class="btn-row" style="margin-top:16px">
+          <button type="submit" class="btn btn-primary">Speichern</button>
+          <a href="/" class="btn">← Zurück</a>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    fetch('/api/config')
+      .then(r => r.json())
+      .then(d => {
+        if (d.lightIp)  document.getElementById('light_ip').value  = d.lightIp;
+        if (d.screenIp) document.getElementById('screen_ip').value = d.screenIp;
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>

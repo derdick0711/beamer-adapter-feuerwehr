@@ -44,16 +44,19 @@ SceneResult SceneManager::runStart() {
     ShellyResult sr = ShellyClient::coverClose(gScreen);
     addStep(r, "screen", "close", sr.success,
             sr.success ? "" : "shelly_screen_unreachable");
+    yield();
 
     // Step 2: Licht aus
     sr = ShellyClient::setSwitch(gLight, false);
     addStep(r, "light", "off", sr.success,
             sr.success ? "" : "shelly_light_unreachable");
+    yield();
 
     // Step 3: Beamer ein
     bool beamerOn = gRS232.sendCommand(BeamerCmd::POWER_ON);
     addStep(r, "beamer", "power_on", beamerOn,
             beamerOn ? "" : "rs232_timeout");
+    yield();
 
     // Step 4: HDMI Eingang
     bool hdmi = gRS232.sendCommand(BeamerCmd::INPUT_HDMI);
@@ -77,11 +80,13 @@ SceneResult SceneManager::runStop() {
     ShellyResult sr = ShellyClient::coverOpen(gScreen);
     addStep(r, "screen", "open", sr.success,
             sr.success ? "" : "shelly_screen_unreachable");
+    yield();
 
     // Step 2: Licht ein
     sr = ShellyClient::setSwitch(gLight, true);
     addStep(r, "light", "on", sr.success,
             sr.success ? "" : "shelly_light_unreachable");
+    yield();
 
     // Step 3: Beamer aus
     bool beamerOff = gRS232.sendCommand(BeamerCmd::POWER_OFF);

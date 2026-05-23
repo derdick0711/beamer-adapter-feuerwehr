@@ -1,6 +1,6 @@
 #include "WifiProvisioner.h"
 #include <WiFiManager.h>
-#include <WiFi.h>
+#include <ESP8266WiFi.h>
 
 WifiProvisioner gWifi;
 

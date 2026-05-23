@@ -4,10 +4,7 @@
 WebUI gWebUI;
 
 void WebUI::begin(AsyncWebServer& server) {
-    if (!LittleFS.begin(true)) {
-        // Format on first use; subsequent boots will have the filesystem
-        Serial.println("[WebUI] LittleFS mount failed — formatted");
-    }
+    // LittleFS already mounted in setup() before this is called
 
     // Serve static files from LittleFS
     server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");

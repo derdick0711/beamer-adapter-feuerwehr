@@ -1,5 +1,6 @@
 #include "ShellyClient.h"
-#include "ConfigManager.h"
+#include <ESP8266HTTPClient.h>
+#include <WiFiClient.h>
 
 ShellySwitchDevice gLight;
 ShellyRollerDevice gScreen;
@@ -8,10 +9,11 @@ ShellyResult ShellyClient::_get(const String& ip, const String& rpcPath,
                                  JsonDocument* out) {
     if (ip.length() == 0) return {false, "no_ip"};
 
+    WiFiClient wifiClient;
     HTTPClient http;
     String url = "http://" + ip + "/rpc/" + rpcPath;
-    http.begin(url);
-    http.setTimeout(3000);
+    http.begin(wifiClient, url);
+    http.setTimeout(2500);
     int code = http.GET();
 
     if (code != 200) {

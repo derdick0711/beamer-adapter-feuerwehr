@@ -3,9 +3,7 @@
 BeamerRS232 gRS232;
 
 void BeamerRS232::begin(const Rs232Config& cfg) {
-    // UART1 on configurable pins
-    _serial = &Serial1;
-    _serial->begin(cfg.baud, SERIAL_8N1, cfg.rxPin, cfg.txPin);
+    _serial.begin(cfg.baud, SWSERIAL_8N1, cfg.rxPin, cfg.txPin);
     delay(100);
 }
 
@@ -25,47 +23,27 @@ const char* BeamerRS232::_cmdStr(BeamerCmd cmd) {
 }
 
 bool BeamerRS232::sendCommand(BeamerCmd cmd) {
-    if (!_serial) return false;
     _flushRx();
 
     const char* str = _cmdStr(cmd);
     if (!str) return false;
 
-    _serial->print(str);
+    _serial.print(str);
 
     bool ack = _waitAck(500);
 
-    // Update global status
     if (ack) {
         gBeamerStatus.markReachable();
         switch (cmd) {
-            case BeamerCmd::POWER_ON:
-                gBeamerStatus.power = PowerState::ON;
-                break;
-            case BeamerCmd::POWER_OFF:
-                gBeamerStatus.power = PowerState::OFF;
-                break;
-            case BeamerCmd::BLANK_ON:
-                gBeamerStatus.blank = true;
-                break;
-            case BeamerCmd::BLANK_OFF:
-                gBeamerStatus.blank = false;
-                break;
-            case BeamerCmd::INPUT_HDMI:
-                gBeamerStatus.input = InputSource::HDMI;
-                break;
-            case BeamerCmd::INPUT_VGA:
-                gBeamerStatus.input = InputSource::VGA;
-                break;
-            case BeamerCmd::INPUT_COMPONENT:
-                gBeamerStatus.input = InputSource::COMPONENT;
-                break;
-            case BeamerCmd::INPUT_SVIDEO:
-                gBeamerStatus.input = InputSource::SVIDEO;
-                break;
-            case BeamerCmd::INPUT_COMPOSITE:
-                gBeamerStatus.input = InputSource::COMPOSITE;
-                break;
+            case BeamerCmd::POWER_ON:        gBeamerStatus.power = PowerState::ON;         break;
+            case BeamerCmd::POWER_OFF:       gBeamerStatus.power = PowerState::OFF;        break;
+            case BeamerCmd::BLANK_ON:        gBeamerStatus.blank = true;                   break;
+            case BeamerCmd::BLANK_OFF:       gBeamerStatus.blank = false;                  break;
+            case BeamerCmd::INPUT_HDMI:      gBeamerStatus.input = InputSource::HDMI;      break;
+            case BeamerCmd::INPUT_VGA:       gBeamerStatus.input = InputSource::VGA;       break;
+            case BeamerCmd::INPUT_COMPONENT: gBeamerStatus.input = InputSource::COMPONENT; break;
+            case BeamerCmd::INPUT_SVIDEO:    gBeamerStatus.input = InputSource::SVIDEO;    break;
+            case BeamerCmd::INPUT_COMPOSITE: gBeamerStatus.input = InputSource::COMPOSITE; break;
             default: break;
         }
     } else {
@@ -78,25 +56,23 @@ bool BeamerRS232::sendCommand(BeamerCmd cmd) {
 bool BeamerRS232::_waitAck(uint32_t timeoutMs) {
     uint32_t start = millis();
     while (millis() - start < timeoutMs) {
-        if (_serial->available() >= 1) {
-            uint8_t b = _serial->read();
-            if (b == 0x06) { // ACK
-                // Consume trailing CR if present
+        if (_serial.available() >= 1) {
+            uint8_t b = _serial.read();
+            if (b == 0x06) {  // ACK
                 delay(5);
-                while (_serial->available()) _serial->read();
+                while (_serial.available()) _serial.read();
                 return true;
             }
-            if (b == 0x15) { // NAK
-                return false;
-            }
+            if (b == 0x15) return false;  // NAK
         }
+        yield();
         delay(5);
     }
-    return false; // timeout
+    return false;
 }
 
 void BeamerRS232::_flushRx() {
-    while (_serial && _serial->available()) _serial->read();
+    while (_serial.available()) _serial.read();
 }
 
 const char* BeamerRS232::inputName(InputSource src) {

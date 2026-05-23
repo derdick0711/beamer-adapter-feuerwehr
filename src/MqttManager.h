@@ -1,7 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <PubSubClient.h>
-#include <WiFi.h>
+#include <ESP8266WiFi.h>
 #include "ConfigManager.h"
 #include "BeamerRS232.h"
 #include "BeamerStatus.h"

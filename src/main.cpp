@@ -1,6 +1,7 @@
 #include <Arduino.h>
+#include <ESP8266WiFi.h>
+#include <LittleFS.h>
 #include <ESPAsyncWebServer.h>
-#include <esp_task_wdt.h>
 
 #include "ConfigManager.h"
 #include "BeamerStatus.h"
@@ -21,12 +22,14 @@ void setup() {
     delay(200);
     Serial.println("[boot] Beamer Adapter Feuerwehr starting...");
 
-    // Watchdog: 10 s timeout (constitution §III)
-    esp_task_wdt_config_t wdt_cfg = { .timeout_ms = 10000, .idle_core_mask = 0, .trigger_panic = true };
-    esp_task_wdt_reconfigure(&wdt_cfg);
-    esp_task_wdt_add(nullptr);
+    // 1. Mount filesystem (required before config load and web UI)
+    if (!LittleFS.begin()) {
+        Serial.println("[boot] LittleFS mount failed — formatting...");
+        LittleFS.format();
+        LittleFS.begin();
+    }
 
-    // 1. Load config from NVS
+    // 2. Load config from LittleFS
     gConfig.load();
     gConfig.loadShelly();
 
@@ -34,32 +37,29 @@ void setup() {
     gLight.ip  = gConfig.shelly.lightIp;
     gScreen.ip = gConfig.shelly.screenIp;
 
-    // 2. WiFi provisioning (blocks until connected or AP timeout → restart)
+    // 3. WiFi provisioning (blocks until connected or AP timeout → restart)
     gWifi.begin(gConfig);
 
     Serial.print("[boot] IP: ");
     Serial.println(WiFi.localIP());
 
-    // 3. RS232 UART
+    // 4. RS232 SoftwareSerial
     gRS232.begin(gConfig.rs232);
 
-    // 4. Web UI (LittleFS) + REST API + Admin UI
+    // 5. Web UI (LittleFS) + REST API + Admin UI
     gWebUI.begin(server);
     gRest.begin(server);
     gAdmin.begin(server);
     server.begin();
     Serial.println("[boot] HTTP server started");
 
-    // 5. MQTT (non-blocking; skipped if no broker configured)
+    // 6. MQTT (non-blocking; skipped if no broker configured)
     gMqtt.begin(gConfig);
 
     Serial.println("[boot] Ready");
-    esp_task_wdt_reset();
 }
 
 void loop() {
-    esp_task_wdt_reset();
-
     // MQTT keepalive + auto-reconnect
     gMqtt.loop();
 

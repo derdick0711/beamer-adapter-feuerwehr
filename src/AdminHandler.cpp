@@ -3,22 +3,18 @@
 #include "ShellyClient.h"
 #include <ArduinoJson.h>
 #include <LittleFS.h>
-#include "mbedtls/md.h"
-#include "mbedtls/base64.h"
+#include <bearssl/bearssl_hash.h>
 
 AdminHandler gAdmin;
 
-// ── SHA-256 ──────────────────────────────────────────────────────────────────
+// ── SHA-256 via BearSSL ────────────────────────────────────────────────────────
 
 String AdminHandler::hashPassword(const String& plain) {
+    br_sha256_context ctx;
+    br_sha256_init(&ctx);
+    br_sha256_update(&ctx, plain.c_str(), plain.length());
     uint8_t hash[32];
-    mbedtls_md_context_t ctx;
-    mbedtls_md_init(&ctx);
-    mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), 0);
-    mbedtls_md_starts(&ctx);
-    mbedtls_md_update(&ctx, (const uint8_t*)plain.c_str(), plain.length());
-    mbedtls_md_finish(&ctx, hash);
-    mbedtls_md_free(&ctx);
+    br_sha256_out(&ctx, hash);
 
     String result;
     result.reserve(64);
@@ -30,7 +26,30 @@ String AdminHandler::hashPassword(const String& plain) {
     return result;
 }
 
-// ── Auth check ───────────────────────────────────────────────────────────────
+// ── Base64 decode (RFC 4648) ───────────────────────────────────────────────────
+
+static int base64Decode(const String& input, uint8_t* output, size_t maxOut) {
+    static const char* table =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    size_t outLen = 0;
+    uint32_t buf = 0;
+    int bits = 0;
+    for (size_t i = 0; i < input.length() && outLen < maxOut; i++) {
+        char c = input.charAt(i);
+        if (c == '=') break;
+        const char* p = strchr(table, c);
+        if (!p) continue;
+        buf = (buf << 6) | (uint32_t)(p - table);
+        bits += 6;
+        if (bits >= 8) {
+            bits -= 8;
+            output[outLen++] = (buf >> bits) & 0xFF;
+        }
+    }
+    return (int)outLen;
+}
+
+// ── Auth check ────────────────────────────────────────────────────────────────
 
 bool AdminHandler::_checkAuth(AsyncWebServerRequest* req) {
     AsyncWebHeader* h = req->getHeader("Authorization");
@@ -39,13 +58,10 @@ bool AdminHandler::_checkAuth(AsyncWebServerRequest* req) {
     String auth = h->value();
     if (!auth.startsWith("Basic ")) return false;
 
-    // base64-decode the credentials
     String encoded = auth.substring(6);
     uint8_t buf[128] = {};
-    size_t outLen = 0;
-    int rc = mbedtls_base64_decode(buf, sizeof(buf) - 1, &outLen,
-                                   (const uint8_t*)encoded.c_str(), encoded.length());
-    if (rc != 0) return false;
+    int outLen = base64Decode(encoded, buf, sizeof(buf) - 1);
+    if (outLen <= 0) return false;
 
     String decoded((char*)buf, outLen);
     int sep = decoded.indexOf(':');
@@ -53,7 +69,6 @@ bool AdminHandler::_checkAuth(AsyncWebServerRequest* req) {
 
     String pass = decoded.substring(sep + 1);
 
-    // Ensure a hash is set (set default on first access)
     if (gConfig.shelly.adminPwHash.length() == 0) {
         gConfig.shelly.adminPwHash = hashPassword("feuerwehr");
         gConfig.saveShelly(gConfig.shelly);
@@ -62,7 +77,7 @@ bool AdminHandler::_checkAuth(AsyncWebServerRequest* req) {
     return hashPassword(pass).equalsIgnoreCase(gConfig.shelly.adminPwHash);
 }
 
-// ── Routes ───────────────────────────────────────────────────────────────────
+// ── Routes ────────────────────────────────────────────────────────────────────
 
 static bool validIp(const String& ip) {
     int dots = 0;
@@ -71,7 +86,6 @@ static bool validIp(const String& ip) {
 }
 
 void AdminHandler::begin(AsyncWebServer& server) {
-    // GET /admin — serve admin.html (password protected)
     server.on("/admin", HTTP_GET, [](AsyncWebServerRequest* req) {
         if (!gAdmin._checkAuth(req)) {
             req->requestAuthentication("Beamer Adapter Admin");
@@ -80,7 +94,6 @@ void AdminHandler::begin(AsyncWebServer& server) {
         req->send(LittleFS, "/admin.html", "text/html");
     });
 
-    // POST /admin/save — update Shelly IPs and optional password
     server.on("/admin/save", HTTP_POST, [](AsyncWebServerRequest* req) {
         if (!gAdmin._checkAuth(req)) {
             req->requestAuthentication("Beamer Adapter Admin");
@@ -105,7 +118,6 @@ void AdminHandler::begin(AsyncWebServer& server) {
 
         gConfig.shelly.lightIp  = lightIp;
         gConfig.shelly.screenIp = screenIp;
-        // Update live device IPs immediately (no restart needed)
         gLight.ip  = lightIp;
         gScreen.ip = screenIp;
 
@@ -114,7 +126,6 @@ void AdminHandler::begin(AsyncWebServer& server) {
         }
 
         gConfig.saveShelly(gConfig.shelly);
-
         req->redirect("/admin");
     });
 }

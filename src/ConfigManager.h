@@ -1,6 +1,5 @@
 #pragma once
 #include <Arduino.h>
-#include <Preferences.h>
 
 struct ShellyConfig {
     String lightIp      = "192.168.1.100";
@@ -18,15 +17,15 @@ struct NetworkConfig {
 };
 
 struct MqttConfig {
-    String  host;
+    String   host;
     uint16_t port   = 1883;
-    String  prefix  = "beamer";
+    String   prefix = "beamer";
 };
 
 struct Rs232Config {
     uint32_t baud  = 9600;
-    uint8_t  rxPin = 16;
-    uint8_t  txPin = 17;
+    uint8_t  rxPin = 4;   // D2 on WeMos D1 Mini (GPIO4)
+    uint8_t  txPin = 5;   // D1 on WeMos D1 Mini (GPIO5)
 };
 
 class ConfigManager {
@@ -46,7 +45,7 @@ public:
     bool hasWifiCredentials() const { return network.ssid.length() > 0; }
 
 private:
-    Preferences _prefs;
+    void _save();   // write full config to /config.json
 };
 
 extern ConfigManager gConfig;

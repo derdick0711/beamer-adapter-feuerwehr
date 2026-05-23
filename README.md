@@ -29,26 +29,38 @@ PlatformIO/Arduino-ESP32.
 
 | Bauteil | Modell |
 |---------|--------|
-| Mikrocontroller | diymore ESP32-S3 DevKitC-1 N16R8 (16 MB Flash, 8 MB PSRAM) |
+| Mikrocontroller | ARCELI WeMos WiFi ESP8266 D1 Mini (4 MB Flash) |
 | RS232-Level-Konverter | MAX3232-Board (3,3 V ↔ RS232 ±12 V) |
 | Beamer | Acer H6512BD (DLP, RS232 DB-9) |
-| Verbindung ESP32 ↔ MAX3232 | Jumperkabel |
+| Verbindung ESP8266 ↔ MAX3232 | Jumperkabel |
 | Verbindung MAX3232 ↔ Beamer | RS232-Kabel DB-9 (Nullmodem oder 1:1 je nach Pinbelegung) |
 
-### Verdrahtung ESP32-S3 ↔ MAX3232
+### WeMos D1 Mini Pinbelegung
 
 ```
-ESP32-S3 DevKitC-1          MAX3232 Board
-─────────────────           ─────────────
-GPIO17 (TX, UART1)  ──────► T1IN  (TTL-Eingang)
-GPIO16 (RX, UART1)  ◄─────── R1OUT (TTL-Ausgang)
-3.3V                ──────── VCC
-GND                 ──────── GND
+WeMos D1 Mini    GPIO    Funktion
+─────────────    ────    ────────
+D1               GPIO5   RS232 TX  →  MAX3232 T1IN
+D2               GPIO4   RS232 RX  ←  MAX3232 R1OUT
+D3               GPIO0   WLAN-Reset-Button (BOOT)
+3.3V             —       MAX3232 VCC
+GND              —       MAX3232 GND / Beamer Pin 5
+```
+
+### Verdrahtung WeMos D1 Mini ↔ MAX3232
+
+```
+WeMos D1 Mini          MAX3232 Board
+─────────────          ─────────────
+D1 / GPIO5 (TX)  ────► T1IN  (TTL-Eingang)
+D2 / GPIO4 (RX)  ◄──── R1OUT (TTL-Ausgang)
+3.3V             ────── VCC
+GND              ────── GND
 
 MAX3232 Board          Beamer DB-9 (RS232)
 ─────────────          ───────────────────
-T1OUT (RS232-TX) ─────► Pin 2 (RXD)
-R1IN  (RS232-RX) ◄───── Pin 3 (TXD)
+T1OUT (RS232-TX) ────► Pin 2 (RXD)
+R1IN  (RS232-RX) ◄──── Pin 3 (TXD)
 GND              ──────  Pin 5 (GND)
 ```
 
@@ -58,7 +70,7 @@ GND              ──────  Pin 5 (GND)
 
 ### Reset-Button
 
-Der **BOOT-Button** (GPIO0) auf dem ESP32-S3 DevKit dient als WLAN-Reset:
+Der **D3-Button** (GPIO0 / FLASH-Button) auf dem WeMos D1 Mini dient als WLAN-Reset:
 - **5 Sekunden gedrückt halten** → WLAN-Konfiguration wird gelöscht, Adapter startet
   im Access-Point-Modus neu.
 
@@ -92,14 +104,15 @@ Alle Bibliotheken werden von PlatformIO automatisch installiert (`platformio.ini
 |-----------|---------|-----------|
 | tzapu/WiFiManager | ^2.0.17 | Captive-Portal-Konfiguration |
 | me-no-dev/ESPAsyncWebServer | ^1.2.3 | Asynchroner Web- und REST-Server |
-| me-no-dev/AsyncTCP | ^1.1.1 | TCP-Basis für ESPAsyncWebServer |
+| me-no-dev/ESPAsyncTCP | ^1.2.3 | TCP-Basis für ESPAsyncWebServer (ESP8266) |
 | knolleary/PubSubClient | ^2.8 | MQTT-Client |
 | bblanchon/ArduinoJson | ^7.0.0 | JSON-Serialisierung/-Deserialisierung |
 
 Eingebaut (keine `lib_deps` nötig):
-- **HTTPClient** (Arduino-ESP32) — HTTP-Aufrufe an Shelly-Geräte
-- **mbedTLS** (ESP-IDF) — SHA-256-Hashing für Admin-Passwort
-- **Preferences / NVS** — persistente Konfigurationsspeicherung
+- **ESP8266HTTPClient** (Arduino-ESP8266) — HTTP-Aufrufe an Shelly-Geräte
+- **BearSSL** (ESP8266 Arduino Core) — SHA-256-Hashing für Admin-Passwort
+- **SoftwareSerial** (ESP8266 Arduino Core) — RS232-Kommunikation auf D1/D2
+- **LittleFS** — persistente Konfigurationsspeicherung (JSON-Datei `/config.json`)
 
 ### Build & Flash
 
@@ -375,7 +388,7 @@ ACK = `0x06`, NAK = `0x15`, Timeout = 500 ms.
 src/
 ├── main.cpp              Initialisierung, Setup, Loop
 ├── ConfigManager.h/.cpp  NVS-Konfiguration (WLAN, MQTT, Shelly-IPs, Admin-PW)
-├── BeamerRS232.h/.cpp    RS232-Kommunikation mit Acer H6512BD
+├── BeamerRS232.h/.cpp    RS232-Kommunikation (SoftwareSerial D1/D2) mit Acer H6512BD
 ├── BeamerStatus.h        Globaler Beamer-Zustand (power, input, blank, reachable)
 ├── RestHandler.h/.cpp    ESPAsyncWebServer — REST-Routen
 ├── MqttManager.h/.cpp    PubSubClient — MQTT pub/sub

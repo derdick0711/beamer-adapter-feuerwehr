@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include <SoftwareSerial.h>
 #include "BeamerStatus.h"
 #include "ConfigManager.h"
 
@@ -20,7 +21,7 @@ public:
     static InputSource inputFromString(const String& s);
 
 private:
-    HardwareSerial* _serial = nullptr;
+    SoftwareSerial _serial{-1, -1};
     bool _waitAck(uint32_t timeoutMs = 500);
     void _flushRx();
     static const char* _cmdStr(BeamerCmd cmd);

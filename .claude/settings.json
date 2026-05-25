@@ -17,7 +17,8 @@
       "WebFetch(domain:192.168.178.126)",
       "PowerShell(& \"$env:USERPROFILE\\\\.platformio\\\\penv\\\\Scripts\\\\pio.exe\" run --environment d1_mini --project-dir \"c:\\\\Users\\\\olive\\\\Documents\\\\Claude\\\\beamer adapter feuerwehr\" 2>&1)",
       "PowerShell(& \"$env:USERPROFILE\\\\.platformio\\\\penv\\\\Scripts\\\\pio.exe\" run --target upload --environment d1_mini --project-dir \"c:\\\\Users\\\\olive\\\\Documents\\\\Claude\\\\beamer adapter feuerwehr\" 2>&1)",
-      "PowerShell(& \"$env:USERPROFILE\\\\.platformio\\\\penv\\\\Scripts\\\\pio.exe\" run --target uploadfs --environment d1_mini --project-dir \"c:\\\\Users\\\\olive\\\\Documents\\\\Claude\\\\beamer adapter feuerwehr\" 2>&1)"
+      "PowerShell(& \"$env:USERPROFILE\\\\.platformio\\\\penv\\\\Scripts\\\\pio.exe\" run --target uploadfs --environment d1_mini --project-dir \"c:\\\\Users\\\\olive\\\\Documents\\\\Claude\\\\beamer adapter feuerwehr\" 2>&1)",
+      "PowerShell(& \"$env:USERPROFILE\\\\.platformio\\\\penv\\\\Scripts\\\\pio.exe\" run --target upload --environment d1_mini --project-dir \"c:\\\\Users\\\\olive\\\\Documents\\\\Claude\\\\beamer adapter feuerwehr\" 2>&1; & \"$env:USERPROFILE\\\\.platformio\\\\penv\\\\Scripts\\\\pio.exe\" run --target uploadfs --environment d1_mini --project-dir \"c:\\\\Users\\\\olive\\\\Documents\\\\Claude\\\\beamer adapter feuerwehr\" 2>&1)"
     ]
   }
 }

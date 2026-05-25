@@ -7,6 +7,14 @@ WifiProvisioner gWifi;
 void WifiProvisioner::begin(ConfigManager& cfg) {
     pinMode(RESET_PIN, INPUT_PULLUP);
 
+    // Boot-time reset: button held at startup → force AP mode
+    if (digitalRead(RESET_PIN) == LOW) {
+        delay(2000);
+        if (digitalRead(RESET_PIN) == LOW) {
+            cfg.resetWifi();
+        }
+    }
+
     WiFiManager wm;
     wm.setConfigPortalTimeout(AP_TIMEOUT_S);
 
@@ -62,28 +70,19 @@ void WifiProvisioner::begin(ConfigManager& cfg) {
         }
     }
 
-    bool connected = wm.autoConnect("BeamerAdapter-Setup");
+    bool connected;
+    if (!cfg.hasWifiCredentials()) {
+        connected = wm.startConfigPortal("BeamerAdapter-Setup");
+    } else {
+        connected = wm.autoConnect("BeamerAdapter-Setup");
+    }
     if (!connected) {
-        // Timeout reached with no config — restart and try again
         ESP.restart();
     }
 }
 
 void WifiProvisioner::resetConfig(ConfigManager& cfg) {
     cfg.resetWifi();
-    delay(500);
+    delay(200);
     ESP.restart();
-}
-
-void WifiProvisioner::checkResetButton(ConfigManager& cfg) {
-    if (digitalRead(RESET_PIN) == LOW) {
-        if (!_btnHeld) {
-            _btnHeld       = true;
-            _btnPressStart = millis();
-        } else if (millis() - _btnPressStart >= HOLD_MS) {
-            resetConfig(cfg);
-        }
-    } else {
-        _btnHeld = false;
-    }
 }

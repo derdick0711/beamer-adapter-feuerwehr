@@ -143,6 +143,7 @@
       <div class="btn-row" style="margin-top:4px;padding:0 0 24px">
         <button type="submit" class="btn btn-primary">Speichern</button>
         <a href="/" class="btn">← Zurück</a>
+        <button type="button" class="btn btn-danger" onclick="resetWifi()">WLAN zurücksetzen</button>
       </div>
 
     </form>
@@ -199,6 +200,14 @@
     document.getElementById('mqtt_enabled').addEventListener('change', function() {
       document.getElementById('mqtt-fields').classList.toggle('hidden', !this.checked);
     });
+
+    function resetWifi() {
+      if (!confirm('WLAN-Einstellungen löschen und AP-Modus starten?')) return;
+      fetch('/admin/reset-wifi', { method: 'POST', credentials: 'same-origin' })
+        .finally(() => {
+          document.body.innerHTML = '<div style="padding:2rem;font-family:sans-serif"><h2>WLAN wird zurückgesetzt…</h2><p>Verbinde dich mit dem WLAN <strong>BeamerAdapter-Setup</strong></p></div>';
+        });
+    }
 
     function doRestart() {
       const btn = event.target;

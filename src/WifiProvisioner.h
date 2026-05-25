@@ -4,22 +4,15 @@
 
 class WifiProvisioner {
 public:
-    // Blocks until connected or AP config saved. Sets up custom params.
+    // Checks boot-time reset button, then connects or opens AP
     void begin(ConfigManager& cfg);
 
-    // Clears WiFi NVS keys and restarts into AP mode
+    // Clears WiFi credentials and restarts into AP mode
     void resetConfig(ConfigManager& cfg);
 
-    // Call in loop() to detect 5s reset-button hold (GPIO0)
-    void checkResetButton(ConfigManager& cfg);
-
 private:
-    static constexpr uint8_t  RESET_PIN    = 0;   // BOOT button on DevKit
-    static constexpr uint32_t HOLD_MS      = 5000;
-    static constexpr uint32_t AP_TIMEOUT_S = 300; // 5 minutes
-
-    uint32_t _btnPressStart = 0;
-    bool     _btnHeld       = false;
+    static constexpr uint8_t  RESET_PIN    = 0;
+    static constexpr uint32_t AP_TIMEOUT_S = 300;
 };
 
 extern WifiProvisioner gWifi;

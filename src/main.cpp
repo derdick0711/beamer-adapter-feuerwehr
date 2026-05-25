@@ -70,8 +70,5 @@ void loop() {
     // OTA update check (once per hour)
     gOta.loop();
 
-    // Reset-button 5 s hold detection
-    gWifi.checkResetButton(gConfig);
-
     delay(10);
 }

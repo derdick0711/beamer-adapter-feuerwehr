@@ -138,6 +138,21 @@ main {
 .status-dot.on  { background: #1e8e3e; }
 .status-dot.off { background: #ccc; }
 
+.card-divider {
+  border: none;
+  border-top: 1px solid #e8eaed;
+  margin: 14px 0;
+}
+
+.group-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 8px;
+}
+
 .muted-label {
   font-size: 0.8rem;
   color: var(--muted);

@@ -4,7 +4,8 @@
 struct ShellyConfig {
     String lightIp      = "192.168.1.100";
     String screenIp     = "192.168.1.101";
-    String adminPwHash;  // SHA-256 hex; empty = use default "feuerwehr"
+    String adminPwHash;          // SHA-256 hex; empty = use default "feuerwehr"
+    String adminUser    = "admin";
 };
 
 struct NetworkConfig {
@@ -18,8 +19,9 @@ struct NetworkConfig {
 
 struct MqttConfig {
     String   host;
-    uint16_t port   = 1883;
-    String   prefix = "beamer";
+    uint16_t port    = 1883;
+    String   prefix  = "beamer";
+    bool     enabled = false;
 };
 
 struct Rs232Config {

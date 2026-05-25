@@ -10,10 +10,13 @@
   <header>
     <h1>Beamer Adapter</h1>
     <div id="status-bar">
+      <a href="/admin" class="badge" style="text-decoration:none">⚙ Admin</a>
       <span id="status-power" class="badge">–</span>
       <span id="status-input" class="badge">–</span>
       <span id="status-blank" class="badge hidden">Schwarz</span>
       <span id="status-reach" class="badge badge-warn hidden">Offline</span>
+      <span id="status-ip"   class="badge hidden">–</span>
+      <span id="status-mqtt" class="badge hidden">MQTT: OFF</span>
     </div>
   </header>
 
@@ -48,23 +51,25 @@
 
     <!-- Beamer-Steuerung -->
     <section class="card">
-      <h2>Strom</h2>
+      <h2>Beamer</h2>
+
+      <p class="group-label">Strom</p>
       <div class="btn-row">
         <button id="btn-on"  class="btn btn-primary" onclick="power('on')">Einschalten</button>
         <button id="btn-off" class="btn btn-danger"  onclick="power('off')">Ausschalten</button>
       </div>
-    </section>
 
-    <section class="card">
-      <h2>Eingang</h2>
+      <hr class="card-divider">
+
+      <p class="group-label">Eingang</p>
       <div class="btn-row">
         <button class="btn" onclick="setInput('hdmi')">HDMI</button>
         <button class="btn" onclick="setInput('vga')">VGA</button>
       </div>
-    </section>
 
-    <section class="card">
-      <h2>Bild</h2>
+      <hr class="card-divider">
+
+      <p class="group-label">Bild</p>
       <div class="btn-row">
         <button class="btn" onclick="blank(true)">Schwarz schalten</button>
         <button class="btn btn-primary" onclick="blank(false)">Bild freigeben</button>

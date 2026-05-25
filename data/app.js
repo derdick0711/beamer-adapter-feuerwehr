@@ -50,6 +50,18 @@ function updateUI(status) {
   document.getElementById('status-blank').classList.toggle('hidden', !status.blank);
   document.getElementById('status-reach').classList.toggle('hidden', status.reachable !== false);
 
+  const ipEl = document.getElementById('status-ip');
+  if (ipEl && status.ip && status.ip !== '0.0.0.0') {
+    ipEl.textContent = status.ip;
+    ipEl.classList.remove('hidden');
+  }
+
+  const mqttEl = document.getElementById('status-mqtt');
+  if (mqttEl) {
+    mqttEl.textContent = status.mqttConnected ? 'MQTT: ON' : 'MQTT: OFF';
+    mqttEl.classList.toggle('hidden', !status.mqttConnected);
+  }
+
   document.querySelectorAll('[data-input]').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.input === status.input);
   });

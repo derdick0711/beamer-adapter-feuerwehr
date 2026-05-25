@@ -5,7 +5,7 @@ MqttManager  gMqtt;
 MqttManager* MqttManager::_instance = nullptr;
 
 void MqttManager::begin(ConfigManager& cfg) {
-    if (cfg.mqtt.host.length() == 0) return; // no broker configured
+    if (!cfg.mqtt.enabled || cfg.mqtt.host.length() == 0) return;
 
     _instance = this;
     _prefix   = cfg.mqtt.prefix;
@@ -34,6 +34,10 @@ void MqttManager::loop() {
     }
 }
 
+bool MqttManager::isConnected() {
+    return _client.connected();
+}
+
 void MqttManager::publishStatus() {
     if (!_client.connected()) return;
 
@@ -53,7 +57,7 @@ void MqttManager::publishStatus() {
 }
 
 void MqttManager::_reconnect() {
-    if (!_client.server()) return;
+    if (!_instance) return;
 
     String clientId = "beamer-adapter-";
     uint8_t mac[6];
@@ -71,6 +75,9 @@ void MqttManager::_reconnect() {
                         lwtPayload)) {
         _subscribe();
         static uint32_t backoff = 5000; backoff = 5000; // reset on success
+        String ipTopic = _prefix + "/ip";
+        String ip = WiFi.localIP().toString();
+        _client.publish(ipTopic.c_str(), ip.c_str(), true /*retain*/);
     }
 }
 

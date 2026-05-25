@@ -23,9 +23,10 @@ void ConfigManager::load() {
     network.subnet    = doc["ip_sub"]    | "255.255.255.0";
 
     // MQTT
-    mqtt.host   = doc["mqtt_host"]   | "";
-    mqtt.port   = doc["mqtt_port"]   | (uint16_t)1883;
-    mqtt.prefix = doc["mqtt_prefix"] | "beamer";
+    mqtt.host    = doc["mqtt_host"]     | "";
+    mqtt.port    = doc["mqtt_port"]     | (uint16_t)1883;
+    mqtt.prefix  = doc["mqtt_prefix"]   | "beamer";
+    mqtt.enabled = doc["mqtt_enabled"]  | false;
 
     // RS232
     rs232.baud  = doc["rs232_baud"]  | (uint32_t)9600;
@@ -41,9 +42,10 @@ void ConfigManager::loadShelly() {
     if (deserializeJson(doc, f)) { f.close(); return; }
     f.close();
 
-    shelly.lightIp     = doc["light_ip"]  | "192.168.1.100";
-    shelly.screenIp    = doc["screen_ip"] | "192.168.1.101";
-    shelly.adminPwHash = doc["admin_pw"]  | "";
+    shelly.lightIp     = doc["light_ip"]   | "192.168.1.100";
+    shelly.screenIp    = doc["screen_ip"]  | "192.168.1.101";
+    shelly.adminPwHash = doc["admin_pw"]   | "";
+    shelly.adminUser   = doc["admin_user"] | "admin";
 }
 
 void ConfigManager::_save() {
@@ -54,15 +56,17 @@ void ConfigManager::_save() {
     doc["ip_addr"]    = network.ipAddr;
     doc["ip_gw"]      = network.gateway;
     doc["ip_sub"]     = network.subnet;
-    doc["mqtt_host"]  = mqtt.host;
-    doc["mqtt_port"]  = mqtt.port;
-    doc["mqtt_prefix"]= mqtt.prefix;
+    doc["mqtt_host"]    = mqtt.host;
+    doc["mqtt_port"]    = mqtt.port;
+    doc["mqtt_prefix"]  = mqtt.prefix;
+    doc["mqtt_enabled"] = mqtt.enabled;
     doc["rs232_baud"] = rs232.baud;
     doc["rs232_rx"]   = rs232.rxPin;
     doc["rs232_tx"]   = rs232.txPin;
     doc["light_ip"]   = shelly.lightIp;
     doc["screen_ip"]  = shelly.screenIp;
     doc["admin_pw"]   = shelly.adminPwHash;
+    doc["admin_user"] = shelly.adminUser;
 
     File f = LittleFS.open(CFG_FILE, "w");
     if (f) { serializeJson(doc, f); f.close(); }

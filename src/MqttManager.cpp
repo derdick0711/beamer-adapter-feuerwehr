@@ -5,7 +5,7 @@ MqttManager  gMqtt;
 MqttManager* MqttManager::_instance = nullptr;
 
 void MqttManager::begin(ConfigManager& cfg) {
-    if (cfg.mqtt.host.length() == 0) return; // no broker configured
+    if (!cfg.mqtt.enabled || cfg.mqtt.host.length() == 0) return;
 
     _instance = this;
     _prefix   = cfg.mqtt.prefix;
@@ -53,7 +53,7 @@ void MqttManager::publishStatus() {
 }
 
 void MqttManager::_reconnect() {
-    if (!_client.server()) return;
+    if (!_instance) return;
 
     String clientId = "beamer-adapter-";
     uint8_t mac[6];

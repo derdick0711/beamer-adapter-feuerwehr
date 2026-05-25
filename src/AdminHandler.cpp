@@ -52,7 +52,7 @@ static int base64Decode(const String& input, uint8_t* output, size_t maxOut) {
 // ── Auth check ────────────────────────────────────────────────────────────────
 
 bool AdminHandler::_checkAuth(AsyncWebServerRequest* req) {
-    AsyncWebHeader* h = req->getHeader("Authorization");
+    const AsyncWebHeader* h = req->getHeader("Authorization");
     if (!h) return false;
 
     String auth = h->value();
@@ -63,11 +63,16 @@ bool AdminHandler::_checkAuth(AsyncWebServerRequest* req) {
     int outLen = base64Decode(encoded, buf, sizeof(buf) - 1);
     if (outLen <= 0) return false;
 
-    String decoded((char*)buf, outLen);
+    String decoded((const char*)buf);
     int sep = decoded.indexOf(':');
     if (sep < 0) return false;
 
+    String user = decoded.substring(0, sep);
     String pass = decoded.substring(sep + 1);
+
+    String expectedUser = gConfig.shelly.adminUser.length() > 0
+                          ? gConfig.shelly.adminUser : "admin";
+    if (!user.equalsIgnoreCase(expectedUser)) return false;
 
     if (gConfig.shelly.adminPwHash.length() == 0) {
         gConfig.shelly.adminPwHash = hashPassword("feuerwehr");
@@ -94,18 +99,46 @@ void AdminHandler::begin(AsyncWebServer& server) {
         req->send(LittleFS, "/admin.html", "text/html");
     });
 
+    // GET /admin/config — auth-protected config JSON for admin page
+    server.on("/admin/config", HTTP_GET, [](AsyncWebServerRequest* req) {
+        if (!gAdmin._checkAuth(req)) {
+            req->requestAuthentication("Beamer Adapter Admin");
+            return;
+        }
+        JsonDocument doc;
+        doc["lightIp"]     = gConfig.shelly.lightIp;
+        doc["screenIp"]    = gConfig.shelly.screenIp;
+        doc["adminUser"]   = gConfig.shelly.adminUser;
+        doc["mqttEnabled"] = gConfig.mqtt.enabled;
+        doc["mqttHost"]    = gConfig.mqtt.host;
+        doc["mqttPort"]    = gConfig.mqtt.port;
+        doc["mqttPrefix"]  = gConfig.mqtt.prefix;
+        String body;
+        serializeJson(doc, body);
+        req->send(200, "application/json", body);
+    });
+
     server.on("/admin/save", HTTP_POST, [](AsyncWebServerRequest* req) {
         if (!gAdmin._checkAuth(req)) {
             req->requestAuthentication("Beamer Adapter Admin");
             return;
         }
 
-        String lightIp  = req->hasParam("light_ip",  true)
-                          ? req->getParam("light_ip",  true)->value() : "";
-        String screenIp = req->hasParam("screen_ip", true)
-                          ? req->getParam("screen_ip", true)->value() : "";
-        String newPass  = req->hasParam("new_password", true)
-                          ? req->getParam("new_password", true)->value() : "";
+        String lightIp   = req->hasParam("light_ip",      true)
+                           ? req->getParam("light_ip",      true)->value() : "";
+        String screenIp  = req->hasParam("screen_ip",     true)
+                           ? req->getParam("screen_ip",     true)->value() : "";
+        String newPass   = req->hasParam("new_password",  true)
+                           ? req->getParam("new_password",  true)->value() : "";
+        String newUser   = req->hasParam("new_username",  true)
+                           ? req->getParam("new_username",  true)->value() : "";
+        bool   mqttEn    = req->hasParam("mqtt_enabled",  true);
+        String mqttHost  = req->hasParam("mqtt_host",     true)
+                           ? req->getParam("mqtt_host",     true)->value() : "";
+        String mqttPort  = req->hasParam("mqtt_port",     true)
+                           ? req->getParam("mqtt_port",     true)->value() : "";
+        String mqttPfx   = req->hasParam("mqtt_prefix",   true)
+                           ? req->getParam("mqtt_prefix",   true)->value() : "";
 
         if (!validIp(lightIp) || !validIp(screenIp)) {
             JsonDocument doc;
@@ -120,12 +153,29 @@ void AdminHandler::begin(AsyncWebServer& server) {
         gConfig.shelly.screenIp = screenIp;
         gLight.ip  = lightIp;
         gScreen.ip = screenIp;
-
-        if (newPass.length() > 0) {
+        if (newPass.length() > 0)
             gConfig.shelly.adminPwHash = AdminHandler::hashPassword(newPass);
-        }
-
+        if (newUser.length() > 0)
+            gConfig.shelly.adminUser = newUser;
         gConfig.saveShelly(gConfig.shelly);
+
+        gConfig.mqtt.enabled = mqttEn;
+        gConfig.mqtt.host    = mqttHost;
+        if (mqttPort.length() > 0) gConfig.mqtt.port = (uint16_t)mqttPort.toInt();
+        if (mqttPfx.length()  > 0) gConfig.mqtt.prefix = mqttPfx;
+        gConfig.saveMqtt(gConfig.mqtt);
+
         req->redirect("/admin");
+    });
+
+    // POST /admin/restart
+    server.on("/admin/restart", HTTP_POST, [](AsyncWebServerRequest* req) {
+        if (!gAdmin._checkAuth(req)) {
+            req->requestAuthentication("Beamer Adapter Admin");
+            return;
+        }
+        req->send(200, "text/plain", "restarting");
+        delay(200);
+        ESP.restart();
     });
 }

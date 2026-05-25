@@ -34,6 +34,10 @@ void MqttManager::loop() {
     }
 }
 
+bool MqttManager::isConnected() {
+    return _client.connected();
+}
+
 void MqttManager::publishStatus() {
     if (!_client.connected()) return;
 
@@ -71,6 +75,9 @@ void MqttManager::_reconnect() {
                         lwtPayload)) {
         _subscribe();
         static uint32_t backoff = 5000; backoff = 5000; // reset on success
+        String ipTopic = _prefix + "/ip";
+        String ip = WiFi.localIP().toString();
+        _client.publish(ipTopic.c_str(), ip.c_str(), true /*retain*/);
     }
 }
 

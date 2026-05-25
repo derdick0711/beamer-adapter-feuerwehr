@@ -11,10 +11,11 @@
     .toggle input { opacity:0; width:0; height:0; }
     .slider { position:absolute; inset:0; background:#ccc; border-radius:24px; cursor:pointer; transition:.2s; }
     .slider:before { content:""; position:absolute; width:18px; height:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.2s; }
-    input:checked + .slider { background:var(--primary,#e63946); }
+    input:checked + .slider { background:var(--primary,#1a73e8); }
     input:checked + .slider:before { transform:translateX(20px); }
     .restart-banner { display:none; background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:.9rem; }
     .restart-banner.visible { display:block; }
+    .label-row { display:flex; align-items:center; gap:6px; }
   </style>
 </head>
 <body>
@@ -24,7 +25,7 @@
 
   <main>
     <div id="restart-banner" class="restart-banner card">
-      MQTT-Einstellungen gespeichert. <strong>Neustart erforderlich</strong> damit die Änderungen aktiv werden.
+      Einstellungen gespeichert. <strong>Neustart erforderlich</strong> damit die Änderungen aktiv werden.
       <button class="btn btn-danger" style="margin-left:12px" onclick="doRestart()">Jetzt neu starten</button>
     </div>
 
@@ -34,15 +35,65 @@
       <section class="card">
         <h2>Shelly Konfiguration</h2>
         <div class="form-group">
-          <label for="light_ip">Shelly 1 Mini Gen3 (Deckenlicht)</label>
+          <label for="light_ip">
+            <span class="label-row">
+              Shelly 1 Mini Gen3 (Deckenlicht)
+              <span class="status-dot" id="dot-light"></span>
+            </span>
+          </label>
           <input type="text" id="light_ip" name="light_ip"
-                 placeholder="192.168.1.100" pattern="\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}" required>
+                 placeholder="192.168.1.100" pattern="\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}">
         </div>
         <div class="form-group">
-          <label for="screen_ip">Shelly 2PM Gen3 (Leinwand)</label>
+          <label for="screen_ip">
+            <span class="label-row">
+              Shelly 2PM Gen3 (Leinwand)
+              <span class="status-dot" id="dot-screen"></span>
+            </span>
+          </label>
           <input type="text" id="screen_ip" name="screen_ip"
-                 placeholder="192.168.1.101" pattern="\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}" required>
+                 placeholder="192.168.1.101" pattern="\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}">
         </div>
+      </section>
+
+      <!-- WLAN -->
+      <section class="card">
+        <h2>WLAN</h2>
+        <div class="form-group">
+          <label for="wifi_ssid">SSID <small>(leer = unverändert)</small></label>
+          <input type="text" id="wifi_ssid" name="wifi_ssid"
+                 placeholder="Leer lassen wenn unverändert" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="wifi_password">Passwort <small>(leer = unverändert)</small></label>
+          <input type="password" id="wifi_password" name="wifi_password"
+                 placeholder="Leer lassen wenn unverändert" autocomplete="new-password">
+        </div>
+        <div class="toggle-row">
+          <label class="toggle">
+            <input type="checkbox" id="static_ip" name="static_ip"
+                   onchange="toggleStaticIp(this.checked)">
+            <span class="slider"></span>
+          </label>
+          <span>Feste IP-Adresse</span>
+        </div>
+        <div id="static-ip-fields" class="hidden">
+          <div class="form-group">
+            <label for="ip_addr">IP-Adresse</label>
+            <input type="text" id="ip_addr" name="ip_addr" placeholder="192.168.1.50">
+          </div>
+          <div class="form-group">
+            <label for="ip_gw">Gateway</label>
+            <input type="text" id="ip_gw" name="ip_gw" placeholder="192.168.1.1">
+          </div>
+          <div class="form-group">
+            <label for="ip_sub">Subnetzmaske</label>
+            <input type="text" id="ip_sub" name="ip_sub" placeholder="255.255.255.0">
+          </div>
+        </div>
+        <p class="muted-label" style="font-size:.85rem;margin-top:4px">
+          WLAN-Änderungen werden erst nach einem Neustart aktiv.
+        </p>
       </section>
 
       <!-- MQTT -->
@@ -55,17 +106,19 @@
           </label>
           <span>MQTT aktivieren</span>
         </div>
-        <div class="form-group">
-          <label for="mqtt_host">Broker (IP oder Hostname)</label>
-          <input type="text" id="mqtt_host" name="mqtt_host" placeholder="192.168.1.10">
-        </div>
-        <div class="form-group">
-          <label for="mqtt_port">Port</label>
-          <input type="number" id="mqtt_port" name="mqtt_port" placeholder="1883" min="1" max="65535">
-        </div>
-        <div class="form-group">
-          <label for="mqtt_prefix">Topic-Prefix</label>
-          <input type="text" id="mqtt_prefix" name="mqtt_prefix" placeholder="beamer">
+        <div id="mqtt-fields" class="hidden">
+          <div class="form-group">
+            <label for="mqtt_host">Broker (IP oder Hostname)</label>
+            <input type="text" id="mqtt_host" name="mqtt_host" placeholder="192.168.1.10">
+          </div>
+          <div class="form-group">
+            <label for="mqtt_port">Port</label>
+            <input type="number" id="mqtt_port" name="mqtt_port" placeholder="1883" min="1" max="65535">
+          </div>
+          <div class="form-group">
+            <label for="mqtt_prefix">Topic-Prefix</label>
+            <input type="text" id="mqtt_prefix" name="mqtt_prefix" placeholder="beamer">
+          </div>
         </div>
         <p class="muted-label" style="font-size:.85rem;margin-top:4px">
           MQTT-Änderungen werden erst nach einem Neustart aktiv.
@@ -98,28 +151,53 @@
   <div id="toast" class="toast hidden"></div>
 
   <script>
+    function setDot(id, configured) {
+      const el = document.getElementById(id);
+      if (el) el.className = 'status-dot ' + (configured ? 'on' : 'off');
+    }
+
+    function toggleStaticIp(on) {
+      document.getElementById('static-ip-fields').classList.toggle('hidden', !on);
+    }
+
     fetch('/admin/config', { credentials: 'same-origin' })
       .then(r => r.json())
       .then(d => {
-        if (d.lightIp)   document.getElementById('light_ip').value    = d.lightIp;
-        if (d.screenIp)  document.getElementById('screen_ip').value   = d.screenIp;
-        if (d.mqttHost)  document.getElementById('mqtt_host').value   = d.mqttHost;
-        if (d.mqttPort)  document.getElementById('mqtt_port').value   = d.mqttPort;
-        if (d.mqttPrefix)document.getElementById('mqtt_prefix').value = d.mqttPrefix;
+        // Shelly
+        if (d.lightIp)  document.getElementById('light_ip').value  = d.lightIp;
+        if (d.screenIp) document.getElementById('screen_ip').value = d.screenIp;
+        setDot('dot-light',  !!(d.lightIp  && d.lightIp.length  > 0));
+        setDot('dot-screen', !!(d.screenIp && d.screenIp.length > 0));
+
+        // WiFi
+        if (d.ssid) document.getElementById('wifi_ssid').placeholder = d.ssid + ' (aktuell)';
+        const si = !!d.staticIp;
+        document.getElementById('static_ip').checked = si;
+        toggleStaticIp(si);
+        if (d.ipAddr)   document.getElementById('ip_addr').value = d.ipAddr;
+        if (d.gateway)  document.getElementById('ip_gw').value   = d.gateway;
+        if (d.subnet)   document.getElementById('ip_sub').value  = d.subnet;
+
+        // MQTT
         document.getElementById('mqtt_enabled').checked = !!d.mqttEnabled;
+        if (d.mqttHost)   document.getElementById('mqtt_host').value   = d.mqttHost;
+        if (d.mqttPort)   document.getElementById('mqtt_port').value   = d.mqttPort;
+        if (d.mqttPrefix) document.getElementById('mqtt_prefix').value = d.mqttPrefix;
+        if (d.mqttEnabled || (d.mqttHost && d.mqttHost.length > 0)) {
+          document.getElementById('mqtt-fields').classList.remove('hidden');
+        }
       })
       .catch(() => {});
 
-    // Show restart banner if we just saved MQTT settings
+    // Show restart banner after saves that require restart
     const params = new URLSearchParams(location.search);
-    if (params.get('mqtt') === '1') {
+    if (params.get('mqtt') === '1' || params.get('wifi') === '1') {
       document.getElementById('restart-banner').classList.add('visible');
     }
 
-    // Append ?mqtt=1 when form is submitted so banner shows on redirect
-    document.getElementById('admin-form').addEventListener('submit', function(e) {
-      const action = this.action.split('?')[0];
-      this.action = action + '?mqtt=1';
+    // Show/hide MQTT fields when toggle changes
+    document.getElementById('mqtt_enabled').addEventListener('change', function() {
+      document.getElementById('mqtt-fields').classList.toggle('hidden', !this.checked);
     });
 
     function doRestart() {

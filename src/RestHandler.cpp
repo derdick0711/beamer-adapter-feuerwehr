@@ -1,5 +1,7 @@
 #include "RestHandler.h"
+#include "MqttManager.h"
 #include <ArduinoJson.h>
+#include <ESP8266WiFi.h>
 
 RestHandler gRest;
 
@@ -15,11 +17,13 @@ static String powerStateName(PowerState s) {
 
 void RestHandler::_sendStatus(AsyncWebServerRequest* req) {
     JsonDocument doc;
-    doc["power"]       = powerStateName(gBeamerStatus.power);
-    doc["input"]       = BeamerRS232::inputName(gBeamerStatus.input);
-    doc["blank"]       = gBeamerStatus.blank;
-    doc["reachable"]   = gBeamerStatus.reachable;
-    doc["lastUpdated"] = gBeamerStatus.lastUpdated;
+    doc["power"]         = powerStateName(gBeamerStatus.power);
+    doc["input"]         = BeamerRS232::inputName(gBeamerStatus.input);
+    doc["blank"]         = gBeamerStatus.blank;
+    doc["reachable"]     = gBeamerStatus.reachable;
+    doc["lastUpdated"]   = gBeamerStatus.lastUpdated;
+    doc["ip"]            = WiFi.localIP().toString();
+    doc["mqttConnected"] = gMqtt.isConnected();
     String body;
     serializeJson(doc, body);
     req->send(200, "application/json", body);

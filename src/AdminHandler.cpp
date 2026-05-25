@@ -1,9 +1,11 @@
 #include "AdminHandler.h"
 #include "ConfigManager.h"
 #include "ShellyClient.h"
+#include "MqttManager.h"
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 #include <bearssl/bearssl_hash.h>
+#include <ESP8266WiFi.h>
 
 AdminHandler gAdmin;
 
@@ -113,6 +115,12 @@ void AdminHandler::begin(AsyncWebServer& server) {
         doc["mqttHost"]    = gConfig.mqtt.host;
         doc["mqttPort"]    = gConfig.mqtt.port;
         doc["mqttPrefix"]  = gConfig.mqtt.prefix;
+        doc["ssid"]        = gConfig.network.ssid;
+        doc["staticIp"]    = gConfig.network.staticIp;
+        doc["ipAddr"]      = gConfig.network.ipAddr;
+        doc["gateway"]     = gConfig.network.gateway;
+        doc["subnet"]      = gConfig.network.subnet;
+        doc["currentIp"]   = WiFi.localIP().toString();
         String body;
         serializeJson(doc, body);
         req->send(200, "application/json", body);
@@ -124,23 +132,28 @@ void AdminHandler::begin(AsyncWebServer& server) {
             return;
         }
 
-        String lightIp   = req->hasParam("light_ip",      true)
-                           ? req->getParam("light_ip",      true)->value() : "";
-        String screenIp  = req->hasParam("screen_ip",     true)
-                           ? req->getParam("screen_ip",     true)->value() : "";
-        String newPass   = req->hasParam("new_password",  true)
-                           ? req->getParam("new_password",  true)->value() : "";
-        String newUser   = req->hasParam("new_username",  true)
-                           ? req->getParam("new_username",  true)->value() : "";
-        bool   mqttEn    = req->hasParam("mqtt_enabled",  true);
-        String mqttHost  = req->hasParam("mqtt_host",     true)
-                           ? req->getParam("mqtt_host",     true)->value() : "";
-        String mqttPort  = req->hasParam("mqtt_port",     true)
-                           ? req->getParam("mqtt_port",     true)->value() : "";
-        String mqttPfx   = req->hasParam("mqtt_prefix",   true)
-                           ? req->getParam("mqtt_prefix",   true)->value() : "";
+        auto p = [&](const char* name) -> String {
+            return req->hasParam(name, true) ? req->getParam(name, true)->value() : "";
+        };
 
-        if (!validIp(lightIp) || !validIp(screenIp)) {
+        String lightIp  = p("light_ip");
+        String screenIp = p("screen_ip");
+        String newPass  = p("new_password");
+        String newUser  = p("new_username");
+        bool   mqttEn   = req->hasParam("mqtt_enabled", true);
+        String mqttHost = p("mqtt_host");
+        String mqttPort = p("mqtt_port");
+        String mqttPfx  = p("mqtt_prefix");
+        String wifiSsid = p("wifi_ssid");
+        String wifiPass = p("wifi_password");
+        bool   staticIp = req->hasParam("static_ip", true);
+        String ipAddr   = p("ip_addr");
+        String ipGw     = p("ip_gw");
+        String ipSub    = p("ip_sub");
+
+        // Reject non-empty IPs that fail validation
+        if ((lightIp.length()  > 0 && !validIp(lightIp)) ||
+            (screenIp.length() > 0 && !validIp(screenIp))) {
             JsonDocument doc;
             doc["error"] = "invalid ip address";
             String body;
@@ -149,23 +162,39 @@ void AdminHandler::begin(AsyncWebServer& server) {
             return;
         }
 
-        gConfig.shelly.lightIp  = lightIp;
-        gConfig.shelly.screenIp = screenIp;
-        gLight.ip  = lightIp;
-        gScreen.ip = screenIp;
-        if (newPass.length() > 0)
-            gConfig.shelly.adminPwHash = AdminHandler::hashPassword(newPass);
-        if (newUser.length() > 0)
-            gConfig.shelly.adminUser = newUser;
+        // Shelly: partial save
+        if (lightIp.length()  > 0) { gConfig.shelly.lightIp  = lightIp;  gLight.ip  = lightIp; }
+        if (screenIp.length() > 0) { gConfig.shelly.screenIp = screenIp; gScreen.ip = screenIp; }
+        if (newPass.length()  > 0) gConfig.shelly.adminPwHash = AdminHandler::hashPassword(newPass);
+        if (newUser.length()  > 0) gConfig.shelly.adminUser   = newUser;
         gConfig.saveShelly(gConfig.shelly);
 
+        // MQTT: detect changes, then partial save
+        bool mqttChanged = (mqttEn != gConfig.mqtt.enabled);
         gConfig.mqtt.enabled = mqttEn;
-        gConfig.mqtt.host    = mqttHost;
-        if (mqttPort.length() > 0) gConfig.mqtt.port = (uint16_t)mqttPort.toInt();
-        if (mqttPfx.length()  > 0) gConfig.mqtt.prefix = mqttPfx;
+        if (mqttHost.length() > 0 && mqttHost != gConfig.mqtt.host) { mqttChanged = true; gConfig.mqtt.host = mqttHost; }
+        if (mqttPort.length() > 0) {
+            uint16_t p = (uint16_t)mqttPort.toInt();
+            if (p != gConfig.mqtt.port) { mqttChanged = true; gConfig.mqtt.port = p; }
+        }
+        if (mqttPfx.length() > 0 && mqttPfx != gConfig.mqtt.prefix) { mqttChanged = true; gConfig.mqtt.prefix = mqttPfx; }
         gConfig.saveMqtt(gConfig.mqtt);
 
-        req->redirect("/admin");
+        // WiFi: partial save
+        bool wifiChanged = false;
+        if (wifiSsid.length() > 0) { wifiChanged = true; gConfig.network.ssid     = wifiSsid; }
+        if (wifiPass.length() > 0) { wifiChanged = true; gConfig.network.password = wifiPass; }
+        if (staticIp != gConfig.network.staticIp) { wifiChanged = true; gConfig.network.staticIp = staticIp; }
+        if (ipAddr.length() > 0) { wifiChanged = true; gConfig.network.ipAddr   = ipAddr; }
+        if (ipGw.length()   > 0) { wifiChanged = true; gConfig.network.gateway  = ipGw; }
+        if (ipSub.length()  > 0) { wifiChanged = true; gConfig.network.subnet   = ipSub; }
+        if (wifiChanged) gConfig.saveNetwork(gConfig.network);
+
+        // Smart redirect: append restart flags so browser shows the banner
+        if      (wifiChanged && mqttChanged) req->redirect("/admin?wifi=1&mqtt=1");
+        else if (wifiChanged)                req->redirect("/admin?wifi=1");
+        else if (mqttChanged)                req->redirect("/admin?mqtt=1");
+        else                                 req->redirect("/admin");
     });
 
     // POST /admin/restart

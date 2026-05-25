@@ -14,7 +14,10 @@
       "PowerShell(& \"$env:USERPROFILE\\\\.platformio\\\\penv\\\\Scripts\\\\pio.exe\" run --target uploadfs --environment d1_mini -v 2>&1 | Select-String \"serial|Serial|COM|error|Error|Permission|port\" | Select-Object -First 10)",
       "PowerShell(cd \"c:\\\\Users\\\\olive\\\\Documents\\\\Claude\\\\beamer adapter feuerwehr\"; & C:\\\\Users\\\\olive\\\\.platformio\\\\penv\\\\Scripts\\\\pio.exe run --target uploadfs --environment d1_mini -- --upload-port COM13 2>&1; echo \"Exit: $LASTEXITCODE\")",
       "WebFetch(domain:192.168.178.249)",
-      "WebFetch(domain:192.168.178.126)"
+      "WebFetch(domain:192.168.178.126)",
+      "PowerShell(& \"$env:USERPROFILE\\\\.platformio\\\\penv\\\\Scripts\\\\pio.exe\" run --environment d1_mini --project-dir \"c:\\\\Users\\\\olive\\\\Documents\\\\Claude\\\\beamer adapter feuerwehr\" 2>&1)",
+      "PowerShell(& \"$env:USERPROFILE\\\\.platformio\\\\penv\\\\Scripts\\\\pio.exe\" run --target upload --environment d1_mini --project-dir \"c:\\\\Users\\\\olive\\\\Documents\\\\Claude\\\\beamer adapter feuerwehr\" 2>&1)",
+      "PowerShell(& \"$env:USERPROFILE\\\\.platformio\\\\penv\\\\Scripts\\\\pio.exe\" run --target uploadfs --environment d1_mini --project-dir \"c:\\\\Users\\\\olive\\\\Documents\\\\Claude\\\\beamer adapter feuerwehr\" 2>&1)"
     ]
   }
 }

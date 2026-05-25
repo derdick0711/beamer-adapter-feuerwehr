@@ -12,6 +12,7 @@ class MqttManager {
 public:
     void begin(ConfigManager& cfg);
     void loop();
+    bool isConnected();
     void publishStatus();           // beamer status after RS232 command
     void publishLightStatus();      // beamer/stat/light
     void publishScreenStatus();     // beamer/stat/screen

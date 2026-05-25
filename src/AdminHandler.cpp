@@ -2,6 +2,7 @@
 #include "ConfigManager.h"
 #include "ShellyClient.h"
 #include "MqttManager.h"
+#include "WifiProvisioner.h"
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 #include <bearssl/bearssl_hash.h>
@@ -206,5 +207,16 @@ void AdminHandler::begin(AsyncWebServer& server) {
         req->send(200, "text/plain", "restarting");
         delay(200);
         ESP.restart();
+    });
+
+    // POST /admin/reset-wifi
+    server.on("/admin/reset-wifi", HTTP_POST, [](AsyncWebServerRequest* req) {
+        if (!gAdmin._checkAuth(req)) {
+            req->requestAuthentication("Beamer Adapter Admin", false);
+            return;
+        }
+        req->send(200, "text/plain", "resetting wifi");
+        delay(200);
+        gWifi.resetConfig(gConfig);
     });
 }

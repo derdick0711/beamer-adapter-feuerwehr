@@ -93,7 +93,7 @@ static bool validIp(const String& ip) {
 void AdminHandler::begin(AsyncWebServer& server) {
     server.on("/admin", HTTP_GET, [](AsyncWebServerRequest* req) {
         if (!gAdmin._checkAuth(req)) {
-            req->requestAuthentication("Beamer Adapter Admin");
+            req->requestAuthentication("Beamer Adapter Admin", false);
             return;
         }
         req->send(LittleFS, "/admin.html", "text/html");
@@ -102,7 +102,7 @@ void AdminHandler::begin(AsyncWebServer& server) {
     // GET /admin/config — auth-protected config JSON for admin page
     server.on("/admin/config", HTTP_GET, [](AsyncWebServerRequest* req) {
         if (!gAdmin._checkAuth(req)) {
-            req->requestAuthentication("Beamer Adapter Admin");
+            req->requestAuthentication("Beamer Adapter Admin", false);
             return;
         }
         JsonDocument doc;
@@ -120,7 +120,7 @@ void AdminHandler::begin(AsyncWebServer& server) {
 
     server.on("/admin/save", HTTP_POST, [](AsyncWebServerRequest* req) {
         if (!gAdmin._checkAuth(req)) {
-            req->requestAuthentication("Beamer Adapter Admin");
+            req->requestAuthentication("Beamer Adapter Admin", false);
             return;
         }
 
@@ -171,7 +171,7 @@ void AdminHandler::begin(AsyncWebServer& server) {
     // POST /admin/restart
     server.on("/admin/restart", HTTP_POST, [](AsyncWebServerRequest* req) {
         if (!gAdmin._checkAuth(req)) {
-            req->requestAuthentication("Beamer Adapter Admin");
+            req->requestAuthentication("Beamer Adapter Admin", false);
             return;
         }
         req->send(200, "text/plain", "restarting");
